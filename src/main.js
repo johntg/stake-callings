@@ -365,4 +365,25 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) {
+    return;
+  }
+
+  window.addEventListener("load", async () => {
+    try {
+      await navigator.serviceWorker.register(
+        `${import.meta.env.BASE_URL}sw.js`,
+      );
+      console.log("[Stake Callings] Service worker registered.");
+    } catch (error) {
+      console.warn(
+        "[Stake Callings] Service worker registration failed:",
+        error,
+      );
+    }
+  });
+}
+
+registerServiceWorker();
 loadData();
