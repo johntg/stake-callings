@@ -149,12 +149,22 @@ body.modal-open {
   font-style: italic;
 }
 
-.approval-row {
+.approval-grid {
   margin-top: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+
+.approval-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fafafa;
 }
 
 .approval-item {
@@ -174,8 +184,8 @@ body.modal-open {
 .approval-date {
   color: var(--text-muted);
   font-size: 0.75rem;
-  text-align: right;
-  min-width: 120px;
+  text-align: left;
+  min-height: 1em;
 }
 
 .type-badge {
@@ -363,5 +373,9 @@ select {
   .app-toast {
     top: 8px;
     width: 100%;
+  }
+
+  .approval-grid {
+    grid-template-columns: 1fr;
   }
 }

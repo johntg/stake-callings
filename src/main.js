@@ -330,33 +330,35 @@ function renderCards(rows) {
           <div class="person-name">${escapeHtml(row?.[2] ?? "Unknown name")}</div>
           <div class="pos-text">${escapeHtml(row?.[3] ?? "No position")}</div>
           <div class="unit-text">${escapeHtml(row?.[4] ?? "No unit")}</div>
-          <div class="approval-row">
-            <label class="approval-item">
-              <input
-                type="checkbox"
-                class="approval-checkbox"
-                data-action="toggle-approval"
-                data-id="${escapeHtml(row?.[0] ?? "")}" 
-                data-col-index="6"
-                ${row?.[5] ? "checked" : ""}
-              />
-              <span>Stake Presidency approved</span>
-            </label>
-            <small class="approval-date">${escapeHtml(row?.[5] || "")}</small>
-          </div>
-          <div class="approval-row">
-            <label class="approval-item">
-              <input
-                type="checkbox"
-                class="approval-checkbox"
-                data-action="toggle-approval"
-                data-id="${escapeHtml(row?.[0] ?? "")}" 
-                data-col-index="7"
-                ${row?.[6] ? "checked" : ""}
-              />
-              <span>High Council sustained</span>
-            </label>
-            <small class="approval-date">${escapeHtml(row?.[6] || "")}</small>
+          <div class="approval-grid">
+            <div class="approval-row">
+              <label class="approval-item">
+                <input
+                  type="checkbox"
+                  class="approval-checkbox"
+                  data-action="toggle-approval"
+                  data-id="${escapeHtml(row?.[0] ?? "")}" 
+                  data-col-index="6"
+                  ${row?.[5] ? "checked" : ""}
+                />
+                <span>S.Pres approved</span>
+              </label>
+              <small class="approval-date">${escapeHtml(row?.[5] || "")}</small>
+            </div>
+            <div class="approval-row">
+              <label class="approval-item">
+                <input
+                  type="checkbox"
+                  class="approval-checkbox"
+                  data-action="toggle-approval"
+                  data-id="${escapeHtml(row?.[0] ?? "")}" 
+                  data-col-index="7"
+                  ${row?.[6] ? "checked" : ""}
+                />
+                <span>SHC sustained</span>
+              </label>
+              <small class="approval-date">${escapeHtml(row?.[6] || "")}</small>
+            </div>
           </div>
         </article>
       `,
