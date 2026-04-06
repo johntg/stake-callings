@@ -29,6 +29,10 @@ function doGet(e) {
     return jsonResponse_(getInitialData());
   }
 
+  if (action === "saveCalling") {
+    return jsonResponse_(saveCalling((e && e.parameter) || {}));
+  }
+
   return jsonResponse_({
     success: false,
     error: 'Unknown GET action: "' + action + '"',

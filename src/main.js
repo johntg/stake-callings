@@ -346,20 +346,61 @@ async function submitCalling(payload) {
     unit: payload.unit,
   });
 
-  const response = await fetch(getApiUrl(), {
-    method: "POST",
-    redirect: "follow",
-    body: formData,
-  });
+  try {
+    const response = await fetch(getApiUrl(), {
+      method: "POST",
+      redirect: "follow",
+      body: formData,
+    });
 
-  if (!response.ok) {
-    throw new Error(`Save failed (${response.status})`);
-  }
+    if (!response.ok) {
+      throw new Error(`Save failed (${response.status})`);
+    }
 
-  const result = await response.json();
+    const result = await response.json();
 
-  if (!result.success) {
-    throw new Error(result.error || "Unable to save item.");
+    if (!result.success) {
+      throw new Error(result.error || "Unable to save item.");
+    }
+  } catch (error) {
+    const isFetchFailure =
+      error instanceof TypeError ||
+      String(error?.message || "")
+        .toLowerCase()
+        .includes("failed to fetch");
+
+    if (!isFetchFailure) {
+      throw error;
+    }
+
+    console.warn(
+      "[Stake Callings] POST save failed, retrying with GET fallback:",
+      error,
+    );
+
+    const fallbackUrl = getApiUrl("saveCalling");
+    fallbackUrl.searchParams.set("type", payload.type);
+    fallbackUrl.searchParams.set("name", payload.name);
+    fallbackUrl.searchParams.set("position", payload.position);
+    fallbackUrl.searchParams.set("unit", payload.unit);
+
+    const fallbackResponse = await fetch(fallbackUrl, {
+      method: "GET",
+      redirect: "follow",
+    });
+
+    if (!fallbackResponse.ok) {
+      throw new Error(`Fallback save failed (${fallbackResponse.status})`);
+    }
+
+    const fallbackResult = await fallbackResponse.json();
+    if (!fallbackResult.success) {
+      throw new Error(
+        fallbackResult.error || "Fallback save failed in Apps Script.",
+      );
+    }
+
+    showToast("Saved using compatibility mode.", { type: "success" });
   }
 }
 
