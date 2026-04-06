@@ -330,6 +330,34 @@ function renderCards(rows) {
           <div class="person-name">${escapeHtml(row?.[2] ?? "Unknown name")}</div>
           <div class="pos-text">${escapeHtml(row?.[3] ?? "No position")}</div>
           <div class="unit-text">${escapeHtml(row?.[4] ?? "No unit")}</div>
+          <div class="approval-row">
+            <label class="approval-item">
+              <input
+                type="checkbox"
+                class="approval-checkbox"
+                data-action="toggle-approval"
+                data-id="${escapeHtml(row?.[0] ?? "")}" 
+                data-col-index="6"
+                ${row?.[5] ? "checked" : ""}
+              />
+              <span>Stake Presidency approved</span>
+            </label>
+            <small class="approval-date">${escapeHtml(row?.[5] || "")}</small>
+          </div>
+          <div class="approval-row">
+            <label class="approval-item">
+              <input
+                type="checkbox"
+                class="approval-checkbox"
+                data-action="toggle-approval"
+                data-id="${escapeHtml(row?.[0] ?? "")}" 
+                data-col-index="7"
+                ${row?.[6] ? "checked" : ""}
+              />
+              <span>High Council sustained</span>
+            </label>
+            <small class="approval-date">${escapeHtml(row?.[6] || "")}</small>
+          </div>
         </article>
       `,
     )
@@ -502,6 +530,58 @@ async function submitCalling(payload) {
   }
 }
 
+async function submitApprovalToggle(payload) {
+  if (!isApiConfigured() || appState.usingDemoData) {
+    throw new Error("Approval updates are unavailable in demo mode.");
+  }
+
+  const formData = new URLSearchParams({
+    action: "toggleApproval",
+    id: payload.id,
+    colIndex: String(payload.colIndex),
+    isChecked: payload.isChecked ? "true" : "false",
+  });
+
+  try {
+    const response = await fetch(getApiUrl(), {
+      method: "POST",
+      redirect: "follow",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Approval update failed (${response.status})`);
+    }
+
+    const result = await response.json();
+    if (result?.success !== true) {
+      throw new Error(result?.error || "Unable to update approval status.");
+    }
+  } catch (error) {
+    const isFetchFailure =
+      error instanceof TypeError ||
+      String(error?.message || "")
+        .toLowerCase()
+        .includes("failed to fetch");
+
+    if (!isFetchFailure) {
+      throw error;
+    }
+
+    const fallbackResult = await requestViaJsonp("toggleApproval", {
+      id: payload.id,
+      colIndex: payload.colIndex,
+      isChecked: payload.isChecked,
+    });
+
+    if (fallbackResult?.success !== true) {
+      throw new Error(
+        fallbackResult?.error || "Compatibility approval update failed.",
+      );
+    }
+  }
+}
+
 formElement.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -542,6 +622,39 @@ cancelButton.addEventListener("click", () => setModalOpen(false));
 modalElement.addEventListener("click", (event) => {
   if (event.target === modalElement) {
     setModalOpen(false);
+  }
+});
+
+listElement.addEventListener("change", async (event) => {
+  const checkbox = event.target.closest('input[data-action="toggle-approval"]');
+  if (!checkbox) {
+    return;
+  }
+
+  const id = checkbox.dataset.id?.trim();
+  const colIndex = Number(checkbox.dataset.colIndex);
+  const isChecked = checkbox.checked;
+
+  if (!id || !Number.isFinite(colIndex)) {
+    checkbox.checked = !isChecked;
+    showToast("Unable to update this row: missing row identifier.", {
+      type: "error",
+    });
+    return;
+  }
+
+  checkbox.disabled = true;
+  try {
+    await submitApprovalToggle({ id, colIndex, isChecked });
+    await loadData();
+    showToast("Approval updated.", { type: "success" });
+  } catch (error) {
+    checkbox.checked = !isChecked;
+    showToast(error?.message || "Failed to update approval.", {
+      type: "error",
+    });
+  } finally {
+    checkbox.disabled = false;
   }
 });
 

@@ -33,6 +33,14 @@ function doGet(e) {
     return responsePayload_(saveCalling((e && e.parameter) || {}), e);
   }
 
+  if (action === "toggleApproval") {
+    var params = (e && e.parameter) || {};
+    return responsePayload_(
+      toggleApproval(params.id, Number(params.colIndex), params.isChecked),
+      e,
+    );
+  }
+
   return responsePayload_(
     {
       success: false,
