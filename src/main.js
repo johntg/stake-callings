@@ -424,6 +424,15 @@ async function submitCalling(payload) {
     unit: payload.unit,
   });
 
+  const isExplicitSaveSuccess = (result) =>
+    result === true ||
+    result === "Success" ||
+    result?.success === true ||
+    result?.status === "Success";
+
+  const isLikelyInitialDataPayload = (result) =>
+    result && Array.isArray(result.callings) && Array.isArray(result.units);
+
   try {
     const response = await fetch(getApiUrl(), {
       method: "POST",
@@ -438,12 +447,14 @@ async function submitCalling(payload) {
     const result = await response.json();
     console.log("[Stake Callings] Save POST response:", JSON.stringify(result));
 
-    const postSucceeded =
-      result === true ||
-      result?.success === true ||
-      (result && result.success === undefined && result.error == null);
+    const postSucceeded = isExplicitSaveSuccess(result);
 
     if (!postSucceeded) {
+      if (isLikelyInitialDataPayload(result)) {
+        throw new Error(
+          "Save endpoint returned list data instead of save confirmation. Please redeploy the latest Apps Script web app version.",
+        );
+      }
       throw new Error(result.error || "Unable to save item.");
     }
   } catch (error) {
@@ -473,14 +484,14 @@ async function submitCalling(payload) {
       JSON.stringify(fallbackResult),
     );
 
-    const fallbackSucceeded =
-      fallbackResult === true ||
-      fallbackResult?.success === true ||
-      (fallbackResult &&
-        fallbackResult.success === undefined &&
-        fallbackResult.error == null);
+    const fallbackSucceeded = isExplicitSaveSuccess(fallbackResult);
 
     if (!fallbackSucceeded) {
+      if (isLikelyInitialDataPayload(fallbackResult)) {
+        throw new Error(
+          "Compatibility save hit a non-save endpoint. Redeploy Apps Script so doGet(action=saveCalling) is available.",
+        );
+      }
       throw new Error(
         fallbackResult.error ||
           `Fallback save failed in Apps Script. Raw: ${JSON.stringify(fallbackResult)}`,
