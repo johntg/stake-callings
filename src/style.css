@@ -125,6 +125,7 @@ body.modal-open {
   margin: 10px 0 0;
   color: var(--text);
   line-height: 1.45;
+  white-space: pre-line;
 }
 
 .app-toast {

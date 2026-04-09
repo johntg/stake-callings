@@ -29,8 +29,13 @@ const DEMO_DATA = {
       generatedAt: "06/04/2026 10:30",
       reportType: REPORT_TYPES.OPEN_BY_UNIT,
       generatedBy: "President Example",
-      summary:
-        "Awaiting HC sustain (2): Jane Example — Relief Society President (1st Ward); John Sample — Ward Clerk (2nd Ward)",
+      summary: `Awaiting HC sustain (2)
+
+Jane Example — Relief Society President (1st Ward)
+  High Council votes: 3/6 (Brother Clark, Sister Jones, Bishop Smith)
+
+John Sample — Ward Clerk (2nd Ward)
+  High Council votes: High Council meeting vote`,
     },
     {
       generatedAt: "06/04/2026 10:35",
