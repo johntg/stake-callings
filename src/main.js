@@ -867,6 +867,44 @@ function setModalOpen(isOpen) {
   }
 }
 
+function getLastCompletedStep(row) {
+  const isSettingApartComplete = Boolean(row?.[13]);
+  const isInterviewComplete = Boolean(row?.[8]);
+  const isPreviousReleasedChecked =
+    String(row?.[9] ?? "")
+      .trim()
+      .toLowerCase() === "true" ||
+    String(row?.[9] ?? "")
+      .trim()
+      .toLowerCase() === "yes";
+  const isSustainedByHighCouncil = Boolean(row?.[6]);
+  const isApprovedByStakePresidency = Boolean(row?.[5]);
+  const isCall =
+    String(row?.[1] ?? "")
+      .trim()
+      .toLowerCase() === "call";
+
+  if (isSettingApartComplete) {
+    return "Last: Setting apart complete";
+  }
+  if (isCall && row?.[11] && String(row?.[11]).trim()) {
+    return "Last: Sustaining units selected";
+  }
+  if (isCall && isPreviousReleasedChecked) {
+    return "Last: Previous person released";
+  }
+  if (isSustainedByHighCouncil) {
+    return "Last: Sustained by High Council";
+  }
+  if (isInterviewComplete) {
+    return "Last: Interview complete";
+  }
+  if (isApprovedByStakePresidency) {
+    return "Last: Approved by Stake Presidency";
+  }
+  return "No steps completed yet";
+}
+
 function renderCards(rows, emptyMessage = "No callings found.") {
   const isAdminUser = appState.sessionRole.toLowerCase() === "admin";
 
@@ -896,6 +934,7 @@ function renderCards(rows, emptyMessage = "No callings found.") {
       const isShcSustainedComplete = Boolean(row?.[6]);
       const isInterviewComplete = Boolean(row?.[8]);
       const isSettingApartComplete = Boolean(row?.[13]);
+      const lastCompletedStep = getLastCompletedStep(row);
 
       return `
         <article class="card">
@@ -947,6 +986,18 @@ function renderCards(rows, emptyMessage = "No callings found.") {
               <small class="approval-date">${escapeHtml(row?.[6] || "")}</small>
             </div>
           </div>
+          <button
+            type="button"
+            class="card-details-toggle"
+            data-action="toggle-card-details"
+            data-id="${escapeHtml(row?.[0] ?? "")}"
+            aria-expanded="false"
+            aria-controls="card-details-${escapeHtml(row?.[0] ?? "")}"
+          >
+            <span class="toggle-label">Show workflow details</span>
+            <span class="last-step-indicator">${escapeHtml(lastCompletedStep)}</span>
+          </button>
+          <div id="card-details-${escapeHtml(row?.[0] ?? "")}" class="card-details hidden">
           <section class="interview-section ${isInterviewComplete ? "completion-complete" : "completion-pending"}">
             <label class="field-label interview-label" for="assignee-${escapeHtml(row?.[0] ?? "")}">Interview</label>
             <select
@@ -1084,6 +1135,7 @@ function renderCards(rows, emptyMessage = "No callings found.") {
                 : ""
             }
           </section>
+          </div>
         </article>
       `;
     })
@@ -2162,7 +2214,7 @@ formElement.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const payload = {
-    timestamp: new Date().toISOString(),
+    timestamp: "ID-" + new Date().getTime(),
     type: formElement.type.value.trim(),
     name: formElement.name.value.trim(),
     position: formElement.position.value.trim(),
@@ -2474,6 +2526,30 @@ listElement.addEventListener("change", async (event) => {
 });
 
 listElement.addEventListener("click", async (event) => {
+  const cardDetailsToggle = event.target.closest(
+    'button[data-action="toggle-card-details"]',
+  );
+  if (cardDetailsToggle) {
+    const id = cardDetailsToggle.dataset.id?.trim();
+    if (!id) {
+      return;
+    }
+
+    const detailsPanel = document.getElementById(`card-details-${id}`);
+    const toggleLabel = cardDetailsToggle.querySelector(".toggle-label");
+
+    if (!detailsPanel || !toggleLabel) {
+      return;
+    }
+
+    const isHidden = detailsPanel.classList.toggle("hidden");
+    cardDetailsToggle.setAttribute("aria-expanded", String(!isHidden));
+    toggleLabel.textContent = isHidden
+      ? "Show workflow details"
+      : "Hide workflow details";
+    return;
+  }
+
   const editableField = event.target.closest(".editable-field");
   if (editableField && !editableField.querySelector("input")) {
     const action = editableField.dataset.action;

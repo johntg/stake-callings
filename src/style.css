@@ -361,6 +361,48 @@ body.modal-open {
   min-height: 1em;
 }
 
+.card-details-toggle {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #f5f7fa;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  transition: background-color 0.2s;
+}
+
+.card-details-toggle:hover {
+  background: #e8ecf1;
+}
+
+.card-details-toggle .toggle-label {
+  flex: 1;
+  text-align: left;
+}
+
+.card-details-toggle .last-step-indicator {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.card-details {
+  display: block;
+}
+
+.card-details.hidden {
+  display: none;
+}
+
 .interview-section {
   position: relative;
   margin-top: 10px;
