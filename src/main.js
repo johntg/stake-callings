@@ -28,6 +28,9 @@ const appState = {
   members: [], // Loaded from your 'members' table [cite: 1]
   assignableNames: [],
   statusOptions: [],
+  currentPage: "callings",
+  currentReportType: "awaiting-shc",
+  reportOutput: "",
   units: [
     "Allenton Ward",
     "Ashburton Ward",
@@ -139,6 +142,15 @@ function normalizeComparableName(value) {
     .toLowerCase();
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function isAssignedToCurrentUser(row) {
   const currentUser = normalizeComparableName(
     localStorage.getItem("currentUser"),
@@ -149,6 +161,142 @@ function isAssignedToCurrentUser(row) {
     const assignedTo = normalizeComparableName(row[field]);
     return assignedTo && assignedTo === currentUser;
   });
+}
+
+function getVisibleCallings() {
+  return isStakePasswordSession() && !appState.showAllCallingsForStake
+    ? appState.callings.filter((row) => isAssignedToCurrentUser(row))
+    : appState.callings;
+}
+
+function formatReportHeader(title, count) {
+  return `${title}\n${"=".repeat(title.length)}\nItems: ${count}`;
+}
+
+function buildAwaitingShcReport(rows) {
+  const awaiting = rows.filter(
+    (row) => row.sp_approved && !row.hc_sustained && row.status !== "Archived",
+  );
+
+  if (!awaiting.length) {
+    return `${formatReportHeader("Awaiting SHC Sustaining", 0)}\n\nNo callings currently awaiting SHC sustaining.`;
+  }
+
+  const body = awaiting
+    .map(
+      (row, index) =>
+        `${index + 1}. ${row.name || "(No name)"} — ${row.position || "(No position)"} (${row.unit || "No unit"})`,
+    )
+    .join("\n");
+
+  return `${formatReportHeader("Awaiting SHC Sustaining", awaiting.length)}\n\n${body}`;
+}
+
+function buildAssignmentsByPersonReport(rows) {
+  const grouped = new Map();
+
+  rows.forEach((row) => {
+    getAssignmentFieldCandidates().forEach((field) => {
+      const person = String(row[field] || "").trim();
+      if (!person) return;
+
+      const existing = grouped.get(person) || [];
+      existing.push(
+        `${row.name || "(No name)"} — ${row.position || "(No position)"} [${field}]`,
+      );
+      grouped.set(person, existing);
+    });
+  });
+
+  if (!grouped.size) {
+    return `${formatReportHeader("Assignments by Person", 0)}\n\nNo assignments found.`;
+  }
+
+  const sections = [...grouped.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([person, items]) => {
+      const lines = items.map((item) => `  - ${item}`).join("\n");
+      return `${person}\n${lines}`;
+    })
+    .join("\n\n");
+
+  return `${formatReportHeader("Assignments by Person", grouped.size)}\n\n${sections}`;
+}
+
+function buildStatusSummaryReport(rows) {
+  const counts = new Map();
+
+  rows.forEach((row) => {
+    const status = String(row.status || "In Progress").trim() || "In Progress";
+    counts.set(status, (counts.get(status) || 0) + 1);
+  });
+
+  const lines = [...counts.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([status, count]) => `- ${status}: ${count}`)
+    .join("\n");
+
+  return `${formatReportHeader("Status Summary", rows.length)}\n\n${lines || "No callings found."}`;
+}
+
+function generateReport(type) {
+  const rows = getVisibleCallings();
+
+  if (type === "assignments-by-person") {
+    return buildAssignmentsByPersonReport(rows);
+  }
+
+  if (type === "status-summary") {
+    return buildStatusSummaryReport(rows);
+  }
+
+  return buildAwaitingShcReport(rows);
+}
+
+function renderReportsPage() {
+  const list = document.getElementById("data-list");
+  const reportsPage = document.getElementById("reports-page");
+  if (!reportsPage) return;
+
+  if (list) {
+    list.classList.add("hidden");
+  }
+
+  reportsPage.classList.remove("hidden");
+
+  const reportValue = appState.reportOutput
+    ? `<pre class="report-summary">${escapeHtml(appState.reportOutput)}</pre>`
+    : `<p class="report-summary">Choose a report type and click Generate Report.</p>`;
+
+  reportsPage.innerHTML = `
+    <section class="reports-header">
+      <h2>Reports</h2>
+      <p>Construct summary reports from visible callings.</p>
+    </section>
+
+    <section class="report-actions">
+      <label class="field-label" for="report-type">Report type</label>
+      <select id="report-type" onchange="window.selectReportType(this.value)">
+        <option value="awaiting-shc" ${appState.currentReportType === "awaiting-shc" ? "selected" : ""}>Awaiting SHC Sustaining</option>
+        <option value="assignments-by-person" ${appState.currentReportType === "assignments-by-person" ? "selected" : ""}>Assignments by Person</option>
+        <option value="status-summary" ${appState.currentReportType === "status-summary" ? "selected" : ""}>Status Summary</option>
+      </select>
+      <button class="btn btn-primary" onclick="window.generateCurrentReport()">Generate Report</button>
+    </section>
+
+    <article class="card report-card">
+      ${reportValue}
+    </article>
+  `;
+}
+
+function renderCurrentPage() {
+  if (appState.currentPage === "reports") {
+    renderReportsPage();
+    return;
+  }
+
+  renderCards();
 }
 
 function canUpdateAssignmentField(field) {
@@ -197,7 +345,7 @@ async function startApp() {
   if (isLoggedIn) {
     await fetchCallings();
     renderHeader();
-    renderCards();
+    renderCurrentPage();
   } else {
     renderLogin();
   }
@@ -268,10 +416,14 @@ function renderCards() {
   const list = document.getElementById("data-list");
   if (!list) return;
 
-  const rowsToRender =
-    isStakePasswordSession() && !appState.showAllCallingsForStake
-      ? appState.callings.filter((row) => isAssignedToCurrentUser(row))
-      : appState.callings;
+  const reportsPage = document.getElementById("reports-page");
+  if (reportsPage) {
+    reportsPage.classList.add("hidden");
+  }
+
+  list.classList.remove("hidden");
+
+  const rowsToRender = getVisibleCallings();
 
   if (!rowsToRender.length) {
     list.innerHTML = `
@@ -568,7 +720,7 @@ window.updateAssignment = async (id, field, value) => {
     item[field] = value || null;
   }
 
-  renderCards();
+  renderCurrentPage();
 };
 
 window.updateField = async (id, field, value) => {
@@ -620,7 +772,7 @@ window.updateField = async (id, field, value) => {
     const item = appState.callings.find((c) => c.id === id);
     // Update all fields in local state
     Object.assign(item, updateData);
-    renderCards();
+    renderCurrentPage();
   }
 };
 
@@ -631,7 +783,23 @@ window.toggleCallingScope = () => {
 
   appState.showAllCallingsForStake = !appState.showAllCallingsForStake;
   renderHeader();
-  renderCards();
+  renderCurrentPage();
+};
+
+window.togglePage = () => {
+  appState.currentPage =
+    appState.currentPage === "callings" ? "reports" : "callings";
+  renderHeader();
+  renderCurrentPage();
+};
+
+window.selectReportType = (value) => {
+  appState.currentReportType = value;
+};
+
+window.generateCurrentReport = () => {
+  appState.reportOutput = generateReport(appState.currentReportType);
+  renderReportsPage();
 };
 
 function renderLogin() {
@@ -670,11 +838,14 @@ function renderHeader() {
   const scopeLabel = appState.showAllCallingsForStake
     ? "Show My Assignments"
     : "Show All Callings";
+  const pageToggleLabel =
+    appState.currentPage === "callings" ? "Open Reports" : "Open Callings";
   const header = document.createElement("header");
   header.className = "main-header";
   header.innerHTML = `
     <h1>Stake Callings</h1>
     <div class="main-header-actions">
+      <button onclick="window.togglePage()">${pageToggleLabel}</button>
       ${
         showScopeToggle
           ? `<button onclick="window.toggleCallingScope()">${scopeLabel}</button>`
@@ -690,6 +861,13 @@ function renderHeader() {
     const list = document.createElement("div");
     list.id = "data-list";
     app.appendChild(list);
+  }
+
+  if (!document.getElementById("reports-page")) {
+    const reports = document.createElement("div");
+    reports.id = "reports-page";
+    reports.className = "reports-page hidden";
+    app.appendChild(reports);
   }
 }
 
