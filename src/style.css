@@ -13,7 +13,19 @@
   --darkContrast: #ad0058;
   --iconClr: #24cb90;
   --themeClr: #027da5;
+
+  --block-pending: #eef7fb; /* Even softer light blue */
+  --block-done: #d5e9f4; /* Slightly deeper but still soft */
+  --stake-blue: #4e5ff2;
+  --pos-soft: #7a8ba3; /* Soft gray-blue for the position */
+  --unit-soft: #c24d7c;
+
+  --card-bg: #000000; /* The card itself is now black */
+  --block-pending: #eef7fb; /* Keeping your soft blue blocks */
+  --block-done: #d5e9f4; /* Keeping your "done" blue blocks */
+  --stake-blue: #4e5ff2;
 }
+
 * {
   box-sizing: border-box;
 }
@@ -250,16 +262,39 @@ body.modal-open {
   color: #fff7f6;
 }
 
+/* Card Container Adjustments */
 .card {
-  background: var(--white);
-  border-radius: 12px;
-  padding: 20px;
-  margin: 0 auto 12px;
-  border: 1px solid var(--border);
-  max-width: 600px;
   position: relative;
-  overflow: hidden;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  overflow: hidden; /* This clips the banner corners to the card radius */
+  padding: 0 !important; /* Remove default padding to allow banner to touch edges */
+  background: #2a2a2a;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  border: 1px solid #444;
+}
+
+/* The Banner */
+.card-banner {
+  width: 100%;
+  padding: 6px 0;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: white;
+  text-transform: uppercase;
+}
+
+.banner-call {
+  background-color: #2e7d32; /* Green for Callings */
+}
+
+.banner-release {
+  background-color: #d32f2f; /* Red for Releases */
+}
+/* Content Padding */
+.card-content {
+  padding: 15px;
 }
 
 .empty-state {
@@ -267,15 +302,16 @@ body.modal-open {
   color: var(--text-muted);
 }
 
+/* Text Stylings */
 .person-name {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   font-weight: bold;
-  color: var(--primary);
+  color: #fff;
 }
 
 .pos-text {
-  color: var(--text-muted);
-  margin: 4px 0;
+  color: #bbb;
+  margin-bottom: 4px;
 }
 
 .editable-field {
@@ -312,11 +348,9 @@ body.modal-open {
 }
 
 .unit-text {
-  font-size: 1.2rem;
-  color: var(--text-subtle);
-  font-style: italic;
-  font-weight: 600;
-  color: #850042;
+  color: #888;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
 }
 
 .approval-grid {
@@ -835,6 +869,9 @@ select {
 
   .card {
     max-width: none;
+    background-color: var(--card-bg) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1); /* Subtle border so it doesn't vanish */
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   }
 
   .fab {
