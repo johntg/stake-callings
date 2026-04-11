@@ -186,11 +186,11 @@ window.updateField = async (id, field, value) => {
       updateData.hc_sustained_date = timestamp;
     }
   } else if (value === false) {
-    // Clear timestamp when unchecked - use empty string instead of null
+    // Clear timestamp when unchecked - use null for timestamp columns
     if (field === "sp_approved") {
-      updateData.sp_approved_date = "";
+      updateData.sp_approved_date = null;
     } else if (field === "hc_sustained") {
-      updateData.hc_sustained_date = "";
+      updateData.hc_sustained_date = null;
     }
   }
 
