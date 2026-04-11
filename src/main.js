@@ -71,8 +71,8 @@ function resolveSustainingByField(row) {
 function resolveSettingApartDoneField(row) {
   return resolveFirstField(
     row,
-    ["setting_apart_done", "sa_done", "set_apart_done"],
-    "setting_apart_done",
+    ["set_apart", "setting_apart_done", "sa_done", "set_apart_done"],
+    "set_apart",
   );
 }
 
@@ -471,6 +471,7 @@ window.updateField = async (id, field, value) => {
   // Prepare the update object
   const updateData = {};
   const isSettingApartDoneField = [
+    "set_apart",
     "setting_apart_done",
     "sa_done",
     "set_apart_done",

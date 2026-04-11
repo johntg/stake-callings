@@ -276,7 +276,8 @@ body.modal-open {
 
 /* Card Container Adjustments */
 .card {
-  max-width: calc(95vw - 40px); /* Limit width  */
+  width: 100%;
+  max-width: 100%;
   margin: 20px auto; /* Center on page */
   background-color: #fff !important; /* Force white background */
   border-radius: 16px;
@@ -882,7 +883,8 @@ select {
   }
 
   .card {
-    max-width: 960px;
+    width: 100%;
+    max-width: 100%;
     margin-left: auto;
     margin-right: auto;
     background-color: #ffffff; /* Reverting to your preferred white background */
