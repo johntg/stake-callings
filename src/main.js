@@ -175,21 +175,26 @@ function formatReportHeader(title, count) {
 
 function buildAwaitingShcReport(rows) {
   const awaiting = rows.filter(
-    (row) => row.sp_approved && !row.hc_sustained && row.status !== "Archived",
+    (row) =>
+      isCompletedValue(row.sp_approved) &&
+      !isCompletedValue(row.hc_sustained) &&
+      String(row.status || "")
+        .toLowerCase()
+        .trim() !== "archived",
   );
 
   if (!awaiting.length) {
-    return `${formatReportHeader("Awaiting SHC Sustaining", 0)}\n\nNo callings currently awaiting SHC sustaining.`;
+    return `${formatReportHeader("Calls/Releases Awaiting HC Sustaining", 0)}\n\nNo calls or releases are currently awaiting High Council sustaining.`;
   }
 
   const body = awaiting
-    .map(
-      (row, index) =>
-        `${index + 1}. ${row.name || "(No name)"} — ${row.position || "(No position)"} (${row.unit || "No unit"})`,
-    )
+    .map((row, index) => {
+      const itemType = String(row.type || "CALL").toUpperCase();
+      return `${index + 1}. [${itemType}] ${row.name || "(No name)"} — ${row.position || "(No position)"} (${row.unit || "No unit"})`;
+    })
     .join("\n");
 
-  return `${formatReportHeader("Awaiting SHC Sustaining", awaiting.length)}\n\n${body}`;
+  return `${formatReportHeader("Calls/Releases Awaiting HC Sustaining", awaiting.length)}\n\n${body}`;
 }
 
 function buildAssignmentsByPersonReport(rows) {
@@ -239,8 +244,76 @@ function buildStatusSummaryReport(rows) {
   return `${formatReportHeader("Status Summary", rows.length)}\n\n${lines || "No callings found."}`;
 }
 
+function buildUnassignedAssignmentsReport(rows) {
+  const steps = [
+    {
+      label: "Interview",
+      fields: ["interview_by"],
+      appliesTo: () => true,
+    },
+    {
+      label: "Sustaining",
+      fields: ["sustaining_by", "sus_assigned", "sus_assign", "sustain_by"],
+      appliesTo: (row) => String(row.type || "").toUpperCase() !== "RELEASE",
+    },
+    {
+      label: "Setting Apart",
+      fields: ["setting_apart_by", "sa_assign", "set_apart_by"],
+      appliesTo: (row) => String(row.type || "").toUpperCase() !== "RELEASE",
+    },
+  ];
+
+  const grouped = new Map();
+  steps.forEach((step) => grouped.set(step.label, []));
+
+  rows.forEach((row) => {
+    steps.forEach((step) => {
+      if (!step.appliesTo(row)) return;
+
+      const hasAssignment = step.fields.some((field) =>
+        String(row[field] || "").trim(),
+      );
+
+      if (!hasAssignment) {
+        grouped
+          .get(step.label)
+          .push(
+            `[${String(row.type || "CALL").toUpperCase()}] ${row.name || "(No name)"} — ${row.position || "(No position)"} (${row.unit || "No unit"})`,
+          );
+      }
+    });
+  });
+
+  const totalMissing = [...grouped.values()].reduce(
+    (sum, items) => sum + items.length,
+    0,
+  );
+
+  if (!totalMissing) {
+    return `${formatReportHeader("Assignments Not Yet Made", 0)}\n\nAll applicable assignments have been made.`;
+  }
+
+  const sections = steps
+    .map((step) => {
+      const items = grouped.get(step.label) || [];
+      if (!items.length) {
+        return `${step.label} (0)\n  - None`;
+      }
+
+      const lines = items.map((item) => `  - ${item}`).join("\n");
+      return `${step.label} (${items.length})\n${lines}`;
+    })
+    .join("\n\n");
+
+  return `${formatReportHeader("Assignments Not Yet Made", totalMissing)}\n\n${sections}`;
+}
+
 function generateReport(type) {
   const rows = getVisibleCallings();
+
+  if (type === "unassigned-assignments") {
+    return buildUnassignedAssignmentsReport(rows);
+  }
 
   if (type === "assignments-by-person") {
     return buildAssignmentsByPersonReport(rows);
@@ -277,7 +350,8 @@ function renderReportsPage() {
     <section class="report-actions">
       <label class="field-label" for="report-type">Report type</label>
       <select id="report-type" onchange="window.selectReportType(this.value)">
-        <option value="awaiting-shc" ${appState.currentReportType === "awaiting-shc" ? "selected" : ""}>Awaiting SHC Sustaining</option>
+        <option value="awaiting-shc" ${appState.currentReportType === "awaiting-shc" ? "selected" : ""}>Calls/Releases Awaiting HC Sustaining</option>
+        <option value="unassigned-assignments" ${appState.currentReportType === "unassigned-assignments" ? "selected" : ""}>Assignments Not Yet Made</option>
         <option value="assignments-by-person" ${appState.currentReportType === "assignments-by-person" ? "selected" : ""}>Assignments by Person</option>
         <option value="status-summary" ${appState.currentReportType === "status-summary" ? "selected" : ""}>Status Summary</option>
       </select>

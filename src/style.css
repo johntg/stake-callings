@@ -149,11 +149,26 @@ body.modal-open {
   display: block;
 }
 
+.report-card {
+  padding: 14px;
+}
+
 .report-card .report-summary {
-  margin: 10px 0 0;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #f7f9fc;
   color: var(--text);
   line-height: 1.45;
-  white-space: pre-line;
+  white-space: pre-wrap;
+}
+
+.report-card pre.report-summary {
+  min-height: 220px;
+  max-height: 70vh;
+  overflow: auto;
+  resize: vertical;
 }
 
 .report-decision-block {
