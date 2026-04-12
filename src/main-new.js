@@ -71,7 +71,6 @@ const appState = {
   expandedGridId: null,
   expandedSustainingIds: new Set(),
   showAllCallingsForStake: false,
-  activeInlineEdit: null,
 };
 
 function showFatalError(title, message) {
@@ -166,25 +165,6 @@ function hasAdminPasswordAccess() {
 
 function isStakePasswordSession() {
   return getAuthPasswordType() === "stake";
-}
-
-function canAssignMember(member) {
-  if (!member || typeof member !== "object") {
-    return false;
-  }
-
-  const sharedPasswordType = String(member.shared_password_type ?? "")
-    .toLowerCase()
-    .trim();
-  const roleType = String(member.role ?? "")
-    .toLowerCase()
-    .trim();
-
-  if (sharedPasswordType.includes("admin")) {
-    return true;
-  }
-
-  return roleType !== "viewer";
 }
 
 function getAssignmentFieldCandidates() {
@@ -315,58 +295,6 @@ function getSortedVisibleCallings() {
 
 function formatReportHeader(title, count) {
   return `${title}\n${"=".repeat(title.length)}\nItems: ${count}`;
-}
-
-function isInlineEditingField(id, field) {
-  return (
-    appState.activeInlineEdit?.id === id &&
-    appState.activeInlineEdit?.field === field
-  );
-}
-
-function renderEditableCardField(row, field, tagName, style) {
-  const label = field === "name" ? "name" : "position";
-  const currentValue = String(row[field] || "");
-
-  if (isInlineEditingField(row.id, field)) {
-    return `
-      <input
-        type="text"
-        class="inline-edit-input"
-        data-inline-edit="true"
-        value="${escapeHtml(currentValue)}"
-        aria-label="Edit ${label}"
-        onkeyup="window.handleInlineEditKeyup(event, '${row.id}', '${field}')"
-        onblur="window.commitInlineEdit('${row.id}', '${field}', this.value)"
-        style="${style}"
-      />
-    `;
-  }
-
-  return `
-    <${tagName}
-      class="editable-field"
-      title="Click to edit ${label}"
-      onclick="window.startInlineEdit('${row.id}', '${field}')"
-      style="${style}"
-    >${escapeHtml(currentValue)}</${tagName}>
-  `;
-}
-
-function focusActiveInlineEdit() {
-  if (typeof document === "undefined" || !appState.activeInlineEdit) {
-    return;
-  }
-
-  window.requestAnimationFrame(() => {
-    const input = document.querySelector("[data-inline-edit='true']");
-    if (!input || document.activeElement === input) {
-      return;
-    }
-
-    input.focus();
-    input.select();
-  });
 }
 
 function buildAwaitingShcReport(rows) {
@@ -728,7 +656,7 @@ async function startApp() {
   if (members) {
     appState.members = members;
     appState.assignableNames = members
-      .filter((m) => canAssignMember(m))
+      .filter((m) => m.role !== "viewer")
       .map((m) => m.name);
   }
 
@@ -801,7 +729,7 @@ window.login = async function (e) {
   if (enteredPassword.trim() === correctPassword) {
     localStorage.setItem("isLoggedIn", "true");
     localStorage.setItem("currentUser", person.name);
-    localStorage.setItem("userRole", person.role); // Stored for reference/UI; access is determined by authPasswordType.
+    localStorage.setItem("userRole", person.role); // Sets 'admin', 'assign', or 'viewer'
     localStorage.setItem("authPasswordType", requiredType);
     window.location.reload();
   } else {
@@ -810,7 +738,6 @@ window.login = async function (e) {
     );
   }
 };
-
 // 6. UI RENDERING (White Cards / Blue Blocks)
 function renderCards() {
   const list = document.getElementById("data-list");
@@ -868,8 +795,18 @@ function renderCards() {
         </div>
 
         <div style="padding: 18px;">
-          ${renderEditableCardField(row, "name", "h2", "margin: 0; font-size: 1.6rem;")}
-          ${renderEditableCardField(row, "position", "p", "color: var(--text-muted); margin: 4px 0;")}
+          <h2
+            class="editable-field"
+            title="Click to edit name"
+            onclick="window.editCardField('${row.id}', 'name')"
+            style="margin: 0; font-size: 1.6rem;"
+          >${escapeHtml(row.name || "")}</h2>
+          <p
+            class="editable-field"
+            title="Click to edit position"
+            onclick="window.editCardField('${row.id}', 'position')"
+            style="color: var(--text-muted); margin: 4px 0;"
+          >${escapeHtml(row.position || "")}</p>
           <p style="color: var(--unit-soft); font-weight: bold;">${row.unit}</p>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0;">
@@ -1047,8 +984,6 @@ function renderCards() {
     `;
     })
     .join("");
-
-  focusActiveInlineEdit();
 }
 
 // 7. HELPER FUNCTIONS
@@ -1134,13 +1069,14 @@ window.updateAssignment = async (id, field, value) => {
   renderCurrentPage();
 };
 
-window.startInlineEdit = (id, field) => {
+window.editCardField = async (id, field) => {
   if (!["name", "position"].includes(field)) {
     return;
   }
 
-  if (!hasAdminPasswordAccess()) {
-    alert("Editing records requires signing in with the admin password.");
+  const role = String(localStorage.getItem("userRole") || "").toLowerCase();
+  if (role === "viewer") {
+    alert("Viewer accounts cannot edit records.");
     return;
   }
 
@@ -1150,60 +1086,21 @@ window.startInlineEdit = (id, field) => {
     return;
   }
 
-  appState.activeInlineEdit = { id, field };
-  renderCards();
-};
-
-window.cancelInlineEdit = () => {
-  if (!appState.activeInlineEdit) {
-    return;
-  }
-
-  appState.activeInlineEdit = null;
-  renderCards();
-};
-
-window.handleInlineEditKeyup = (event, id, field) => {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    window.commitInlineEdit(id, field, event.target.value);
-    return;
-  }
-
-  if (event.key === "Escape") {
-    event.preventDefault();
-    window.cancelInlineEdit();
-  }
-};
-
-window.commitInlineEdit = async (id, field, nextValue) => {
-  if (
-    !appState.activeInlineEdit ||
-    appState.activeInlineEdit.id !== id ||
-    appState.activeInlineEdit.field !== field
-  ) {
-    return;
-  }
-
-  const item = appState.callings.find((c) => c.id === id);
-  if (!item) {
-    appState.activeInlineEdit = null;
-    renderCards();
-    return;
-  }
-
   const currentValue = String(item[field] || "");
   const label = field === "name" ? "name" : "position";
+  const nextValue = window.prompt(`Edit ${label}:`, currentValue);
+
+  if (nextValue == null) {
+    return;
+  }
+
   const cleaned = String(nextValue).trim();
   if (!cleaned) {
-    appState.activeInlineEdit = null;
-    renderCards();
+    alert(`${label[0].toUpperCase()}${label.slice(1)} cannot be empty.`);
     return;
   }
 
   if (cleaned === currentValue) {
-    appState.activeInlineEdit = null;
-    renderCards();
     return;
   }
 
@@ -1219,7 +1116,6 @@ window.commitInlineEdit = async (id, field, nextValue) => {
   }
 
   item[field] = cleaned;
-  appState.activeInlineEdit = null;
   renderCurrentPage();
 };
 
@@ -1314,19 +1210,19 @@ window.toggleCardSortOrder = () => {
   renderCurrentPage();
 };
 
-// window.toggleThemeMode = () => {
-//   const currentMode = appState.themeMode || "system";
+window.toggleThemeMode = () => {
+  const currentMode = appState.themeMode || "system";
 
-//   const nextMode =
-//     currentMode === "light"
-//       ? "dark"
-//       : currentMode === "dark"
-//         ? "system"
-//         : "light";
+  const nextMode =
+    currentMode === "light"
+      ? "dark"
+      : currentMode === "dark"
+        ? "system"
+        : "light";
 
-//   applyThemeMode(nextMode);
-//   renderHeader();
-// };
+  applyThemeMode(nextMode);
+  renderHeader();
+};
 
 window.selectReportType = (value) => {
   appState.currentReportType = value;
@@ -1679,12 +1575,6 @@ window.submitNewCalling = async (event) => {
   renderCurrentPage();
 };
 
-window.setThemeMode = (mode) => {
-  applyThemeMode(mode);
-  renderHeader();
-};
-4;
-
 function renderHeader() {
   const app = document.getElementById("app");
   const existingHeader = app.querySelector(".main-header");
@@ -1697,25 +1587,23 @@ function renderHeader() {
     ? "Show My Assignments"
     : "Show All Callings";
   const sortLabel = appState.cardSortOrder === "newest" ? "Newest" : "Oldest";
-  // const themeLabel =
-  //   appState.themeMode === "light"
-  //     ? "Light"
-  //     : appState.themeMode === "dark"
-  //       ? "Dark"
-  //       : "System";
+  const themeLabel =
+    appState.themeMode === "light"
+      ? "Light"
+      : appState.themeMode === "dark"
+        ? "Dark"
+        : "System";
   const pageToggleLabel =
     appState.currentPage === "callings" ? "Open Reports" : "Open Callings";
   const header = document.createElement("header");
   header.className = "main-header";
   header.innerHTML = `
-  <div class="main-header-left">
     <h1>Stake Callings<span>Christchurch</span></h1>
-  </div>
-
-  <div class="main-header-center">
+    
     <div class="main-header-actions">
       <button onclick="window.togglePage()">${pageToggleLabel}</button>
       <button onclick="window.toggleCardSortOrder()">${sortLabel}</button>
+      <button onclick="window.toggleThemeMode()">${themeLabel}</button>
       ${
         showScopeToggle
           ? `<button onclick="window.toggleCallingScope()">${scopeLabel}</button>`
@@ -1723,29 +1611,7 @@ function renderHeader() {
       }
       <button onclick="localStorage.clear(); location.reload();">Sign Out</button>
     </div>
-  </div>
-
-  <div class="main-header-right">
-    <div class="theme-switch">
-      <input type="radio" id="theme_light" name="theme" value="light"
-        ${appState.themeMode === "light" ? "checked" : ""}
-        onchange="window.setThemeMode(this.value)">
-      <label for="theme_light">Light</label>
-
-      <input type="radio" id="theme_dark" name="theme" value="dark"
-        ${appState.themeMode === "dark" ? "checked" : ""}
-        onchange="window.setThemeMode(this.value)">
-      <label for="theme_dark">Dark</label>
-
-      <input type="radio" id="theme_system" name="theme" value="system"
-        ${appState.themeMode === "system" ? "checked" : ""}
-        onchange="window.setThemeMode(this.value)">
-      <label for="theme_system">System</label>
-
-      <span class="slider"></span>
-    </div>
-  </div>
-`;
+  `;
   app.prepend(header);
 
   // Create the data-list container if it doesn't exist
