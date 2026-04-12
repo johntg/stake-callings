@@ -22,6 +22,29 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
   }
 }
 
+if (!import.meta.env.DEV && typeof window !== "undefined") {
+  const isGitHubPages = window.location.hostname.endsWith("github.io");
+  if (isGitHubPages) {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => registration.unregister());
+      });
+    }
+
+    if ("caches" in window) {
+      caches.keys().then((keys) => {
+        keys
+          .filter(
+            (key) =>
+              key.includes("stake-callings") ||
+              key.includes("DB-Stake-Callings"),
+          )
+          .forEach((key) => caches.delete(key));
+      });
+    }
+  }
+}
+
 // 3. APP STATE (Preserving your Role & Member logic)
 const appState = {
   callings: [],
@@ -399,6 +422,13 @@ async function startApp() {
   if (error) {
     console.error("Error fetching members:", error);
     alert(`Database Error: ${error.message}`);
+    app.innerHTML = `
+      <div class="card" style="padding: 20px; margin-top: 20px;">
+        <h2 style="margin-top: 0;">Could not load app data</h2>
+        <p style="margin-bottom: 8px;">The app could not fetch members from Supabase.</p>
+        <p style="margin: 0; color: #666; font-size: 0.9rem;">${error.message}</p>
+      </div>
+    `;
     return;
   }
 
