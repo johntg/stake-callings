@@ -1118,36 +1118,10 @@ function renderLogin() {
 }
 
 function updateFabDebugBadge() {
-  let badge = document.getElementById("fab-debug-badge");
-  if (!badge) {
-    badge = document.createElement("div");
-    badge.id = "fab-debug-badge";
-    Object.assign(badge.style, {
-      position: "fixed",
-      left: "10px",
-      bottom: "10px",
-      zIndex: "2000",
-      background: "rgba(0,0,0,0.75)",
-      color: "#fff",
-      borderRadius: "8px",
-      padding: "6px 8px",
-      fontSize: "11px",
-      fontFamily: "monospace",
-      maxWidth: "85vw",
-      pointerEvents: "none",
-    });
-    document.body.appendChild(badge);
+  const badge = document.getElementById("fab-debug-badge");
+  if (badge) {
+    badge.remove();
   }
-
-  const fab = document.getElementById("add-calling-fab");
-  if (!fab) {
-    badge.textContent = "FAB debug: element missing";
-    return;
-  }
-
-  const style = window.getComputedStyle(fab);
-  const rect = fab.getBoundingClientRect();
-  badge.textContent = `FAB debug: display=${style.display} vis=${style.visibility} z=${style.zIndex} at (${Math.round(rect.left)},${Math.round(rect.top)})`;
 }
 
 function ensureResetCacheQuickAction() {
