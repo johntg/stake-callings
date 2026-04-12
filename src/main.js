@@ -1375,7 +1375,7 @@ function renderHeader() {
   const header = document.createElement("header");
   header.className = "main-header";
   header.innerHTML = `
-    <h1>Stake Callings</h1>
+    <h1>Christchurch Stake Callings</h1>
     <div class="main-header-actions">
       <button onclick="window.togglePage()">${pageToggleLabel}</button>
       <button onclick="window.toggleCardSortOrder()">${sortLabel}</button>
