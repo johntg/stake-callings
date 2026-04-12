@@ -380,8 +380,99 @@ function buildUnassignedAssignmentsReport(rows) {
   return `${formatReportHeader("Assignments Not Yet Made", totalMissing)}\n\n${sections}`;
 }
 
+function buildSustainSetApartReleaseReport(rows) {
+  // Get all units from the calling records
+  const unitsSet = new Set(rows.map((r) => r.unit).filter(Boolean));
+  const units = Array.from(unitsSet).sort();
+
+  // Separate releases and callings that need sustaining/setapart
+  const releases = rows.filter(
+    (row) =>
+      String(row.type || "").toUpperCase() === "RELEASE" &&
+      String(row.status || "")
+        .toLowerCase()
+        .trim() !== "archived",
+  );
+
+  const toSustain = rows.filter(
+    (row) =>
+      String(row.type || "").toUpperCase() !== "RELEASE" &&
+      String(row.status || "")
+        .toLowerCase()
+        .trim() !== "archived" &&
+      (isCompletedValue(row.sp_approved) || isCompletedValue(row.hc_sustained)),
+  );
+
+  // Build unit reports - releases first, then callings
+  const reportSections = [];
+
+  // Process Stake business first (if any Stake items exist)
+  const stakeReleases = releases.filter((r) => r.unit === "Stake");
+  const stakeToSustain = toSustain.filter((r) => r.unit === "Stake");
+
+  if (stakeReleases.length > 0 || stakeToSustain.length > 0) {
+    reportSections.push(
+      buildUnitSection("STAKE BUSINESS", stakeReleases, stakeToSustain),
+    );
+  }
+
+  // Then process each other unit
+  for (const unit of units) {
+    if (unit === "Stake") continue; // Already processed above
+
+    const unitReleases = releases.filter((r) => r.unit === unit);
+    const unitToSustain = toSustain.filter((r) => r.unit === unit);
+
+    if (unitReleases.length > 0 || unitToSustain.length > 0) {
+      reportSections.push(
+        buildUnitSection(unit.toUpperCase(), unitReleases, unitToSustain),
+      );
+    }
+  }
+
+  const totalItems = releases.length + toSustain.length;
+  if (reportSections.length === 0) {
+    return `${formatReportHeader("Sustain, Set Apart, and Release Report", 0)}\n\nNo members require sustaining, setting apart, or release at this time.`;
+  }
+
+  return `${formatReportHeader("Sustain, Set Apart, and Release Report", totalItems)}\n\n${reportSections.join("\n\n")}`;
+}
+
+function buildUnitSection(unitTitle, releases, toSustain) {
+  const lines = [];
+  lines.push(`${unitTitle}`);
+  lines.push("-".repeat(unitTitle.length));
+
+  // Releases first (with vote of thanks)
+  if (releases.length > 0) {
+    lines.push("RELEASE - Vote of Thanks for Service:");
+    releases.forEach((row, index) => {
+      lines.push(
+        `  ${index + 1}. ${row.name || "(No name)"} — ${row.position || "(No position)"}`,
+      );
+    });
+    lines.push("");
+  }
+
+  // Callings to sustain and set apart
+  if (toSustain.length > 0) {
+    lines.push("TO BE SUSTAINED:");
+    toSustain.forEach((row, index) => {
+      lines.push(
+        `  ${index + 1}. ${row.name || "(No name)"} — ${row.position || "(No position)"}`,
+      );
+    });
+  }
+
+  return lines.join("\n");
+}
+
 function generateReport(type) {
   const rows = getVisibleCallings();
+
+  if (type === "sustain-setapart-release") {
+    return buildSustainSetApartReleaseReport(rows);
+  }
 
   if (type === "unassigned-assignments") {
     return buildUnassignedAssignmentsReport(rows);
@@ -422,6 +513,7 @@ function renderReportsPage() {
     <section class="report-actions">
       <label class="field-label" for="report-type">Report type</label>
       <select id="report-type" onchange="window.selectReportType(this.value)">
+        <option value="sustain-setapart-release" ${appState.currentReportType === "sustain-setapart-release" ? "selected" : ""}>Sustain, Set Apart, and Release</option>
         <option value="awaiting-shc" ${appState.currentReportType === "awaiting-shc" ? "selected" : ""}>Calls/Releases Awaiting HC Sustaining</option>
         <option value="unassigned-assignments" ${appState.currentReportType === "unassigned-assignments" ? "selected" : ""}>Assignments Not Yet Made</option>
         <option value="assignments-by-person" ${appState.currentReportType === "assignments-by-person" ? "selected" : ""}>Assignments by Person</option>
