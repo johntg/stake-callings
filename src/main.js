@@ -4,9 +4,10 @@ import "./style.css";
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
 // 2. DATABASE SETUP
-const supabaseUrl = "https://orhcmllshkgqdektxshs.supabase.co";
-const supabaseKey = "sb_publishable_1dTR4wmkKA4KPLqMa-tYaw_0GbMx41P";
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+const supabase =
+  supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 if (import.meta.env.DEV && typeof window !== "undefined") {
   if ("serviceWorker" in navigator) {
@@ -69,6 +70,24 @@ const appState = {
   expandedSustainingIds: new Set(),
   showAllCallingsForStake: false,
 };
+
+function showFatalError(title, message) {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const app = document.getElementById("app");
+  if (!app) {
+    return;
+  }
+
+  app.innerHTML = `
+    <div class="card" style="padding: 20px; margin-top: 20px;">
+      <h2 style="margin-top: 0;">${escapeHtml(title)}</h2>
+      <p style="margin-bottom: 8px;">${escapeHtml(message)}</p>
+    </div>
+  `;
+}
 
 function resolveFirstField(row, candidates, fallback) {
   for (const key of candidates) {
@@ -172,6 +191,23 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("error", (event) => {
+    const message = event?.error?.message || event?.message || "Unknown error";
+    console.error("Fatal runtime error:", event?.error || event);
+    showFatalError("Application error", message);
+  });
+
+  window.addEventListener("unhandledrejection", (event) => {
+    const reason = event?.reason;
+    const message =
+      reason?.message ||
+      (typeof reason === "string" ? reason : "Unhandled async error");
+    console.error("Unhandled promise rejection:", reason);
+    showFatalError("Application error", message);
+  });
 }
 
 function isAssignedToCurrentUser(row) {
@@ -410,6 +446,14 @@ function canUpdateAssignmentField(field) {
 async function startApp() {
   const app = document.getElementById("app");
 
+  if (!supabase) {
+    showFatalError(
+      "Missing configuration",
+      "VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set for this build.",
+    );
+    return;
+  }
+
   // Fetch members and status options from database
   const [membersResult, statusesResult] = await Promise.all([
     supabase.from("members").select("*"),
@@ -422,13 +466,10 @@ async function startApp() {
   if (error) {
     console.error("Error fetching members:", error);
     alert(`Database Error: ${error.message}`);
-    app.innerHTML = `
-      <div class="card" style="padding: 20px; margin-top: 20px;">
-        <h2 style="margin-top: 0;">Could not load app data</h2>
-        <p style="margin-bottom: 8px;">The app could not fetch members from Supabase.</p>
-        <p style="margin: 0; color: #666; font-size: 0.9rem;">${error.message}</p>
-      </div>
-    `;
+    showFatalError(
+      "Could not load app data",
+      `The app could not fetch members from Supabase. ${error.message}`,
+    );
     return;
   }
 
@@ -975,4 +1016,10 @@ function renderHeader() {
   }
 }
 
-startApp();
+startApp().catch((error) => {
+  console.error("Failed to start app:", error);
+  showFatalError(
+    "Failed to start app",
+    error?.message || "Unexpected startup error.",
+  );
+});
