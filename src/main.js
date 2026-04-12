@@ -52,6 +52,7 @@ const appState = {
   members: [], // Loaded from your 'members' table [cite: 1]
   assignableNames: [],
   statusOptions: [],
+  cardSortOrder: "newest",
   currentPage: "callings",
   currentReportType: "awaiting-shc",
   reportOutput: "",
@@ -226,6 +227,18 @@ function getVisibleCallings() {
   return isStakePasswordSession() && !appState.showAllCallingsForStake
     ? appState.callings.filter((row) => isAssignedToCurrentUser(row))
     : appState.callings;
+}
+
+function getSortedVisibleCallings() {
+  const rows = [...getVisibleCallings()];
+
+  rows.sort((a, b) => {
+    const aTime = new Date(a?.created_at || a?.timestamp || 0).getTime();
+    const bTime = new Date(b?.created_at || b?.timestamp || 0).getTime();
+    return appState.cardSortOrder === "oldest" ? aTime - bTime : bTime - aTime;
+  });
+
+  return rows;
 }
 
 function formatReportHeader(title, count) {
@@ -583,7 +596,7 @@ function renderCards() {
 
   list.classList.remove("hidden");
 
-  const rowsToRender = getVisibleCallings();
+  const rowsToRender = getSortedVisibleCallings();
 
   if (!rowsToRender.length) {
     list.innerHTML = `
@@ -1035,6 +1048,13 @@ window.togglePage = () => {
   renderCurrentPage();
 };
 
+window.toggleCardSortOrder = () => {
+  appState.cardSortOrder =
+    appState.cardSortOrder === "newest" ? "oldest" : "newest";
+  renderHeader();
+  renderCurrentPage();
+};
+
 window.selectReportType = (value) => {
   appState.currentReportType = value;
 };
@@ -1375,6 +1395,7 @@ function renderHeader() {
   const scopeLabel = appState.showAllCallingsForStake
     ? "Show My Assignments"
     : "Show All Callings";
+  const sortLabel = appState.cardSortOrder === "newest" ? "Newest" : "Oldest";
   const pageToggleLabel =
     appState.currentPage === "callings" ? "Open Reports" : "Open Callings";
   const header = document.createElement("header");
@@ -1383,6 +1404,7 @@ function renderHeader() {
     <h1>Stake Callings</h1>
     <div class="main-header-actions">
       <button onclick="window.togglePage()">${pageToggleLabel}</button>
+      <button onclick="window.toggleCardSortOrder()">${sortLabel}</button>
       ${
         showScopeToggle
           ? `<button onclick="window.toggleCallingScope()">${scopeLabel}</button>`
