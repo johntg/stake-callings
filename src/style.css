@@ -108,12 +108,12 @@ body.modal-open {
 #data-list {
   max-width: 960px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 12px;
   display: flex;
   justify-content: center;
   align-items: center;
   flex-direction: column;
-  gap: 25px; /* This creates the space between cards seen in your screenshot */
+  gap: 14px;
 }
 
 .reports-page {
@@ -295,7 +295,7 @@ body.modal-open {
 .card {
   width: 100%;
   max-width: 100%;
-  margin: 20px auto; /* Center on page */
+  margin: 12px auto;
   background-color: #fff !important; /* Force white background */
   border-radius: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);

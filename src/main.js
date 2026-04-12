@@ -611,20 +611,20 @@ function renderCards() {
           ${isRelease ? "RELEASE" : "CALLING"}
         </div>
 
-        <div style="padding: 25px;">
+        <div style="padding: 18px;">
           <h2 style="margin: 0; font-size: 1.6rem;">${row.name}</h2>
           <p style="color: #666; margin: 4px 0;">${row.position}</p>
           <p style="color: #c24d7c; font-weight: bold;">${row.unit}</p>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0;">
-            <label class="workflow-block ${row.sp_approved ? "done" : ""}" style="display: flex; flex-direction: column; gap: 8px; padding: 15px; background: ${row.sp_approved ? "#d5e9f4" : "#eef7fb"}; border-radius: 12px; cursor: pointer;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0;">
+            <label class="workflow-block ${row.sp_approved ? "done" : ""}" style="display: flex; flex-direction: column; gap: 6px; padding: 10px; background: ${row.sp_approved ? "#d5e9f4" : "#eef7fb"}; border-radius: 12px; cursor: pointer;">
               <div style="display: flex; align-items: center; gap: 10px;">
                 <input type="checkbox" ${row.sp_approved ? "checked" : ""} onchange="window.updateField('${row.id}', 'sp_approved', this.checked)">
                 <span style="font-weight: bold;">S.Pres Approved</span>
               </div>
               ${row.sp_approved_date ? `<span style="font-size: 0.75rem; color: #666; margin-left: 26px;">${new Date(row.sp_approved_date).toLocaleDateString()}</span>` : ""}
             </label>
-            <label class="workflow-block ${row.hc_sustained ? "done" : ""}" style="display: flex; flex-direction: column; gap: 8px; padding: 15px; background: ${row.hc_sustained ? "#d5e9f4" : "#eef7fb"}; border-radius: 12px; cursor: pointer;">
+            <label class="workflow-block ${row.hc_sustained ? "done" : ""}" style="display: flex; flex-direction: column; gap: 6px; padding: 10px; background: ${row.hc_sustained ? "#d5e9f4" : "#eef7fb"}; border-radius: 12px; cursor: pointer;">
               <div style="display: flex; align-items: center; gap: 10px;">
                 <input type="checkbox" ${row.hc_sustained ? "checked" : ""} onchange="window.updateField('${row.id}', 'hc_sustained', this.checked)">
                 <span style="font-weight: bold;">SHC Sustained</span>
@@ -633,21 +633,21 @@ function renderCards() {
             </label>
           </div>
 
-          <button onclick="window.toggleDetails('${row.id}')" 
-                  style="width: 100%; padding: 12px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px; font-weight: bold; color: #555; cursor: pointer;">
+            <button onclick="window.toggleDetails('${row.id}')" 
+              style="width: 100%; padding: 10px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 8px; font-weight: bold; color: #555; cursor: pointer;">
             ${isExpanded ? "▲ Hide Details" : "▼ Show Workflow Details"}
           </button>
 
-          <div style="display: ${isExpanded ? "block" : "none"}; margin-top: 20px; padding-top: 20px; border-top: 1px dashed #ccc;">
-             <p style="font-size: 0.8rem; color: #888; margin-bottom: 10px;">DETAILED STEPS:</p>
-             <div style="background: #fdfdfd; padding: 15px; border-radius: 10px; border: 1px solid #eee;">
-                <div style="display: grid; gap: 12px; margin-bottom: 14px;">
+           <div style="display: ${isExpanded ? "block" : "none"}; margin-top: 14px; padding-top: 14px; border-top: 1px dashed #ccc;">
+             <p style="font-size: 0.8rem; color: #888; margin-bottom: 8px;">DETAILED STEPS:</p>
+             <div style="background: #fdfdfd; padding: 12px; border-radius: 10px; border: 1px solid #eee;">
+               <div style="display: grid; gap: 10px; margin-bottom: 10px;">
                   <div>
                     <label style="display: block; font-size: 0.75rem; color: #666; font-weight: bold; margin-bottom: 6px; text-transform: uppercase;">Interview assigned to</label>
                     <select
                       onchange="window.updateAssignment('${row.id}', 'interview_by', this.value)"
                       ${canAssign ? "" : "disabled title='Admin password required for assignments'"}
-                      style="width: 100%; padding: 10px 12px; border: 1px solid #d7dbe3; border-radius: 8px; background: #fff; color: #333; font-size: 0.95rem;"
+                      style="width: 100%; padding: 8px 10px; border: 1px solid #d7dbe3; border-radius: 8px; background: #fff; color: #333; font-size: 0.95rem;"
                     >
                       <option value="">Select interviewer...</option>
                       ${appState.assignableNames
@@ -659,7 +659,7 @@ function renderCards() {
                     </select>
                   </div>
 
-                  <label style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: ${row.interviewed ? "#dff5e8" : "#f5f7fa"}; color: #333; font-weight: 600; cursor: pointer;">
+                  <label style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: ${row.interviewed ? "#dff5e8" : "#f5f7fa"}; color: #333; font-weight: 600; cursor: pointer;">
                     <input type="checkbox" ${row.interviewed ? "checked" : ""} onchange="window.updateField('${row.id}', 'interviewed', this.checked)">
                     <span>Interview completed</span>
                   </label>
@@ -667,7 +667,7 @@ function renderCards() {
                   ${
                     isRelease
                       ? ""
-                      : `<label style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: ${row.prev_release ? "#fff2d8" : "#f5f7fa"}; color: #333; font-weight: 600; cursor: pointer;">
+                      : `<label style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: ${row.prev_release ? "#fff2d8" : "#f5f7fa"}; color: #333; font-weight: 600; cursor: pointer;">
                     <input type="checkbox" ${row.prev_release ? "checked" : ""} onchange="window.updateField('${row.id}', 'prev_release', this.checked)">
                     <span>Reminder: verify previous release</span>
                   </label>`
@@ -678,13 +678,13 @@ function renderCards() {
                   isRelease
                     ? ""
                     : `
-                <div style="margin-top: 14px; padding-top: 14px; border-top: 1px dashed #e0e0e0;">
-                  <div style="margin-bottom: 12px;">
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e0e0e0;">
+                  <div style="margin-bottom: 10px;">
                     <label style="display: block; font-size: 0.75rem; color: #666; font-weight: bold; margin-bottom: 6px; text-transform: uppercase;">Sustaining assigned to</label>
                     <select
                       onchange="window.updateAssignment('${row.id}', '${sustainingByField}', this.value)"
                       ${canAssign ? "" : "disabled title='Admin password required for assignments'"}
-                      style="width: 100%; padding: 10px 12px; border: 1px solid #d7dbe3; border-radius: 8px; background: #fff; color: #333; font-size: 0.95rem;"
+                      style="width: 100%; padding: 8px 10px; border: 1px solid #d7dbe3; border-radius: 8px; background: #fff; color: #333; font-size: 0.95rem;"
                     >
                       <option value="">Select assignee...</option>
                       ${appState.assignableNames
@@ -696,16 +696,16 @@ function renderCards() {
                     </select>
                   </div>
 
-                  <button onclick="window.toggleSustainingUnits('${row.id}')" style="width: 100%; padding: 10px; background: #e3f2fd; border: 1px solid #90caf9; border-radius: 8px; font-weight: 600; color: #1976d2; cursor: pointer; font-size: 0.9rem;">
+                  <button onclick="window.toggleSustainingUnits('${row.id}')" style="width: 100%; padding: 8px; background: #e3f2fd; border: 1px solid #90caf9; border-radius: 8px; font-weight: 600; color: #1976d2; cursor: pointer; font-size: 0.9rem;">
                     ${appState.expandedSustainingIds.has(row.id) ? "▲ Hide" : "▼ Show"} Sustaining Units
                   </button>
 
                   ${
                     appState.expandedSustainingIds.has(row.id)
                       ? `
-                    <div style="margin-top: 12px; padding: 12px; background: #f5f5f5; border-radius: 8px;">
+                    <div style="margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 8px;">
                       <p style="font-size: 0.75rem; color: #666; font-weight: bold; margin: 0 0 10px 0; text-transform: uppercase;">Units to sustain</p>
-                      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                      <div style="display: flex; flex-wrap: wrap; gap: 6px;">
                         ${appState.units
                           .map((unit) => {
                             const selectedUnits = Array.isArray(
@@ -717,7 +717,7 @@ function renderCards() {
                             return `
                             <button
                               onclick="window.updateSustainedUnits('${row.id}', '${unit}')"
-                              style="padding: 8px 12px; border-radius: 20px; border: 1px solid #ccc; background: ${isSelected ? "#4CAF50" : "#fff"}; color: ${isSelected ? "#fff" : "#333"}; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;"
+                              style="padding: 7px 10px; border-radius: 20px; border: 1px solid #ccc; background: ${isSelected ? "#4CAF50" : "#fff"}; color: ${isSelected ? "#fff" : "#333"}; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;"
                             >
                               ${unit}
                             </button>
@@ -731,13 +731,13 @@ function renderCards() {
                   }
                 </div>
 
-                <div style="margin-top: 14px; padding-top: 14px; border-top: 1px dashed #e0e0e0; display: grid; gap: 12px;">
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e0e0e0; display: grid; gap: 10px;">
                   <div>
                     <label style="display: block; font-size: 0.75rem; color: #666; font-weight: bold; margin-bottom: 6px; text-transform: uppercase;">Setting apart assigned to</label>
                     <select
                       onchange="window.updateAssignment('${row.id}', '${settingApartByField}', this.value)"
                       ${canAssign ? "" : "disabled title='Admin password required for assignments'"}
-                      style="width: 100%; padding: 10px 12px; border: 1px solid #d7dbe3; border-radius: 8px; background: #fff; color: #333; font-size: 0.95rem;"
+                      style="width: 100%; padding: 8px 10px; border: 1px solid #d7dbe3; border-radius: 8px; background: #fff; color: #333; font-size: 0.95rem;"
                     >
                       <option value="">Select assignee...</option>
                       ${appState.assignableNames
@@ -749,12 +749,12 @@ function renderCards() {
                     </select>
                   </div>
 
-                  <label style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: ${settingApartDone ? "#dff5e8" : "#f5f7fa"}; color: #333; font-weight: 600; cursor: pointer;">
+                  <label style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: ${settingApartDone ? "#dff5e8" : "#f5f7fa"}; color: #333; font-weight: 600; cursor: pointer;">
                     <input type="checkbox" ${settingApartDone ? "checked" : ""} onchange="window.updateField('${row.id}', '${settingApartDoneField}', this.checked)">
                     <span>Setting apart completed</span>
                   </label>
 
-                  <label style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: ${lcrRecorded ? "#dff5e8" : "#f5f7fa"}; color: #333; font-weight: 600; cursor: pointer;">
+                  <label style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: ${lcrRecorded ? "#dff5e8" : "#f5f7fa"}; color: #333; font-weight: 600; cursor: pointer;">
                     <input type="checkbox" ${lcrRecorded ? "checked" : ""} onchange="window.updateField('${row.id}', '${lcrRecordedField}', this.checked)">
                     <span>Recorded in LCR</span>
                   </label>
@@ -762,11 +762,11 @@ function renderCards() {
                 `
                 }
 
-                <div style="margin: 14px 0 0 0;">
+                <div style="margin: 10px 0 0 0;">
                   <label style="display: block; font-size: 0.75rem; color: #666; font-weight: bold; margin-bottom: 6px; text-transform: uppercase;">Status</label>
                   <select
                     onchange="window.updateAssignment('${row.id}', 'status', this.value)"
-                    style="width: 100%; padding: 10px 12px; border: 1px solid #d7dbe3; border-radius: 8px; background: #fff; color: #333; font-size: 0.95rem;"
+                    style="width: 100%; padding: 8px 10px; border: 1px solid #d7dbe3; border-radius: 8px; background: #fff; color: #333; font-size: 0.95rem;"
                   >
                     ${visibleStatusOptions
                       .map(
@@ -779,7 +779,7 @@ function renderCards() {
                   <button
                     onclick="window.archiveCalling('${row.id}')"
                     ${hasAdminPasswordAccess() ? "" : "disabled title='Admin password required to archive'"}
-                    style="margin-top: 10px; width: 100%; padding: 10px 12px; border: 1px solid #d7dbe3; border-radius: 8px; background: #fff3f3; color: #8b1e1e; font-weight: 700; cursor: ${hasAdminPasswordAccess() ? "pointer" : "not-allowed"};"
+                    style="margin-top: 8px; width: 100%; padding: 8px 10px; border: 1px solid #d7dbe3; border-radius: 8px; background: #fff3f3; color: #8b1e1e; font-weight: 700; cursor: ${hasAdminPasswordAccess() ? "pointer" : "not-allowed"};"
                   >
                     Archive
                   </button>
