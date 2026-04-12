@@ -1375,7 +1375,8 @@ function renderHeader() {
   const header = document.createElement("header");
   header.className = "main-header";
   header.innerHTML = `
-    <h1>Christchurch Stake Callings</h1>
+    <h1>Stake Callings<span>Christchurch</span></h1>
+    
     <div class="main-header-actions">
       <button onclick="window.togglePage()">${pageToggleLabel}</button>
       <button onclick="window.toggleCardSortOrder()">${sortLabel}</button>
@@ -1384,7 +1385,6 @@ function renderHeader() {
           ? `<button onclick="window.toggleCallingScope()">${scopeLabel}</button>`
           : ""
       }
-      <button onclick="window.resetCacheAndReload()">Reset Cache</button>
       <button onclick="localStorage.clear(); location.reload();">Sign Out</button>
     </div>
   `;

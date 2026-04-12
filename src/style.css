@@ -79,10 +79,9 @@ body.modal-open {
 .app-header h1 {
   margin: 0;
   color: var(--text);
-  font-size: 1.6rem;
+  font-size: 2rem;
 }
-
-.app-header p {
+.app-header .app-header p {
   margin: 6px 0 0;
   color: var(--text-muted);
   font-size: 0.95rem;
@@ -954,8 +953,17 @@ select {
 .main-header h1 {
   margin: 0;
   color: #1a1a1a;
-  font-size: 1.8rem;
+  font-size: 2rem;
   font-weight: 800;
+}
+
+.main-header h1 span {
+  display: block;
+  font-size: 0.7em;
+  text-transform: uppercase;
+  letter-spacing: 4.6px;
+  color: #555;
+  font-weight: 300;
 }
 
 .main-header button {
@@ -1063,6 +1071,10 @@ select {
   margin: 0;
   cursor: pointer;
   accent-color: var(--stake-blue);
+}
+h1 span {
+  display: block;
+  font-size: 0.7em;
 }
 
 @media (max-width: 640px) {
