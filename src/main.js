@@ -1704,9 +1704,21 @@ function renderHeader() {
   //       ? "Dark"
   //       : "System";
   const pageToggleLabel =
-    appState.currentPage === "callings" ? "Open Reports" : "Open Callings";
+    appState.currentPage === "callings" ? "Reports" : "Callings";
   const header = document.createElement("header");
   header.className = "main-header";
+  var currentMode = appState.themeMode || "system";
+
+  let activeClr, otherClr;
+
+  if (currentMode === "dark") {
+    activeClr = "#5cb5f7";
+    otherClr = "#1472ba";
+  } else if (currentMode === "light") {
+    activeClr = "#f75ced";
+    otherClr = "#303030";
+  }
+
   header.innerHTML = `
   <div class="main-header-left">
     <h1>Stake Callings<span>Christchurch</span></h1>
@@ -1725,26 +1737,25 @@ function renderHeader() {
     </div>
   </div>
 
-  <div class="main-header-right">
-    <div class="theme-switch">
-      <input type="radio" id="theme_light" name="theme" value="light"
-        ${appState.themeMode === "light" ? "checked" : ""}
-        onchange="window.setThemeMode(this.value)">
-      <label for="theme_light">Light</label>
-
-      <input type="radio" id="theme_dark" name="theme" value="dark"
-        ${appState.themeMode === "dark" ? "checked" : ""}
-        onchange="window.setThemeMode(this.value)">
-      <label for="theme_dark">Dark</label>
-
-      <input type="radio" id="theme_system" name="theme" value="system"
-        ${appState.themeMode === "system" ? "checked" : ""}
-        onchange="window.setThemeMode(this.value)">
-      <label for="theme_system">System</label>
-
-      <span class="slider"></span>
+  <div class="themePicker">
+  ${
+    currentMode === "dark"
+      ? `
+    <div class="themeIcon" style="cursor: pointer;" onclick="window.setThemeMode('light')">
+      <svg id="moon" xmlns="http://www.w3.org/2000/svg" fill="${activeClr}" viewBox="0 -960 960 960">
+        <path d="M484-80q-84 0-157.5-32t-128-86.5Q144-253 112-326.5T80-484q0-146 93-257.5T410-880q-18 99 11 193.5T521-521q71 71 165.5 100T880-410q-26 144-138 237T484-80Zm0-80q88 0 163-44t118-121q-86-8-163-43.5T464-465q-61-61-97-138t-43-163q-77 43-120.5 118.5T160-484q0 135 94.5 229.5T484-160Zm-20-305Z"/>
+      </svg>
     </div>
-  </div>
+  `
+      : `
+    <div class="themeIcon" style="cursor: pointer;" onclick="window.setThemeMode('dark')">
+      <svg id="sun" xmlns="http://www.w3.org/2000/svg" fill="${activeClr}" viewBox="0 -960 960 960">
+        <path d="M440-760v-160h80v160h-80Zm266 110-55-55 112-115 56 57-113 113Zm54 210v-80h160v80H760ZM440-40v-160h80v160h-80ZM254-652 140-763l57-56 113 113-56 54Zm508 512L651-255l54-54 114 110-57 59ZM40-440v-80h160v80H40Zm157 300-56-57 112-112 29 27 29 28-114 114Zm113-170q-70-70-70-170t70-170q70-70 170-70t170 70q70 70 70 170t-70 170q-70 70-170 70t-170-70Zm283-57q47-47 47-113t-47-113q-47-47-113-47t-113 47q-47 47-47 113t47 113q47 47 113 47t113-47ZM480-480Z"/>
+      </svg>
+    </div>
+  `
+  }
+</div>
 `;
   app.prepend(header);
 
