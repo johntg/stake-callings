@@ -774,7 +774,7 @@ window.login = async function (e) {
     window.location.reload();
   } else {
     alert(
-      `Access Denied. For ${selectedName}, you must use the ${requiredType} password.`,
+      `Access Denied. For ${selectedName}, you must use the ${requiredType} password ${ADMIN_PW}::: ${enteredPassword}.`,
     );
   }
 };
