@@ -39,7 +39,7 @@ if (!import.meta.env.DEV && typeof window !== "undefined") {
         keys
           .filter(
             (key) =>
-              key.includes("stake-callings") ||
+              key.includes("call-recorder") ||
               key.includes("DB-Stake-Callings"),
           )
           .forEach((key) => caches.delete(key));
