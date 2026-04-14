@@ -613,7 +613,7 @@ function renderReportsPage() {
 
   const reportValue = appState.reportOutput
     ? `<pre class="report-summary">${escapeHtml(appState.reportOutput)}</pre>`
-    : `<p class="report-summary">Choose a report type and click Generate Report.</p>`;
+    : `<p class="report-summary"></p>`;
 
   const actionButtons = appState.reportOutput
     ? `
@@ -625,11 +625,11 @@ function renderReportsPage() {
   reportsPage.innerHTML = `
     <section class="reports-header">
       <h2>Reports</h2>
-      <p>Construct summary reports from visible callings.</p>
+      <p>SELECT REPORT THEN GENERATE</p>
     </section>
 
     <section class="report-actions">
-      <label class="field-label" for="report-type">Report type</label>
+    
       <select id="report-type" onchange="window.selectReportType(this.value)">
         <option value="sustain-setapart-release" ${appState.currentReportType === "sustain-setapart-release" ? "selected" : ""}>Sustain, Set Apart, and Release</option>
         <option value="awaiting-shc" ${appState.currentReportType === "awaiting-shc" ? "selected" : ""}>Calls/Releases Awaiting HC Sustaining</option>
