@@ -2,6 +2,11 @@ export function createCallingsActions({
   appState,
   supabase,
   hasAdminPasswordAccess,
+  isStakePasswordSession,
+  getCurrentUserName,
+  normalizeComparableName,
+  getHighCouncilVoteSummary,
+  applyHighCouncilSummaryToCalling,
   getAssignmentFieldCandidates,
   renderCards,
   renderCurrentPage,
@@ -63,6 +68,189 @@ export function createCallingsActions({
       console.log("Sustaining units updated:", sustaining);
       renderCards();
     }
+  }
+
+  async function submitHighCouncilVote(id, vote) {
+    if (!isStakePasswordSession()) {
+      alert(
+        "Only Stake-password users can submit High Council sustaining votes.",
+      );
+      return;
+    }
+
+    if (!appState.hcVotingTableAvailable) {
+      alert(
+        "High Council voting is not configured in the database yet. Please run the migration for calling_hc_votes.",
+      );
+      return;
+    }
+
+    const item = appState.callings.find((calling) => calling.id === id);
+    if (!item) {
+      alert("Could not find this item to record the vote.");
+      return;
+    }
+
+    const currentUser = String(getCurrentUserName() || "").trim();
+    if (!currentUser) {
+      alert("Could not determine the signed-in member.");
+      return;
+    }
+
+    const isEligibleHighCouncillor = appState.highCouncilNames.some(
+      (name) =>
+        normalizeComparableName(name) === normalizeComparableName(currentUser),
+    );
+
+    if (!isEligibleHighCouncillor) {
+      alert("Only High Council members can record SHC sustaining votes.");
+      return;
+    }
+
+    const normalizedVote = String(vote || "")
+      .toLowerCase()
+      .trim();
+
+    if (!["sustain", "concern", "clear"].includes(normalizedVote)) {
+      alert("Invalid vote type.");
+      return;
+    }
+
+    if (normalizedVote === "clear") {
+      const { error: deleteError } = await supabase
+        .from("calling_hc_votes")
+        .delete()
+        .eq("calling_id", id)
+        .eq("voter_name", currentUser);
+
+      if (deleteError) {
+        console.error("Failed to clear HC vote:", deleteError);
+        alert(`Failed to clear vote: ${deleteError.message}`);
+        return;
+      }
+    } else {
+      const { error: upsertError } = await supabase
+        .from("calling_hc_votes")
+        .upsert(
+          {
+            calling_id: id,
+            voter_name: currentUser,
+            vote: normalizedVote,
+            voted_at: new Date().toISOString(),
+          },
+          { onConflict: "calling_id,voter_name" },
+        );
+
+      if (upsertError) {
+        console.error("Failed to save HC vote:", upsertError);
+        alert(`Failed to save vote: ${upsertError.message}`);
+        return;
+      }
+    }
+
+    const { data: latestVotes, error: fetchVotesError } = await supabase
+      .from("calling_hc_votes")
+      .select("calling_id, voter_name, vote, voted_at")
+      .eq("calling_id", id);
+
+    if (fetchVotesError) {
+      console.error("Failed to refresh HC votes:", fetchVotesError);
+      alert(
+        `Vote saved, but refreshing vote totals failed: ${fetchVotesError.message}`,
+      );
+      return;
+    }
+
+    appState.hcVotesByCalling[id] = latestVotes || [];
+
+    const previousSustained = Boolean(item.hc_sustained);
+    const previousSustainedDate = item.hc_sustained_date;
+    applyHighCouncilSummaryToCalling(item);
+    const nextSustained = Boolean(item.hc_sustained);
+
+    const updateData = {
+      hc_sustained: nextSustained,
+      hc_sustained_date: nextSustained
+        ? item.hc_sustained_date || new Date().toISOString()
+        : null,
+    };
+
+    const shouldPersist =
+      nextSustained !== previousSustained ||
+      (nextSustained && !previousSustainedDate) ||
+      (!nextSustained && previousSustainedDate);
+
+    if (shouldPersist) {
+      const { error: callingUpdateError } = await supabase
+        .from("callings")
+        .update(updateData)
+        .eq("id", id);
+
+      if (callingUpdateError) {
+        console.error(
+          "Failed to persist derived hc_sustained fields:",
+          callingUpdateError,
+        );
+        alert(
+          `Vote saved, but updating call status failed: ${callingUpdateError.message}`,
+        );
+        return;
+      }
+
+      item.hc_sustained = updateData.hc_sustained;
+      item.hc_sustained_date = updateData.hc_sustained_date;
+    }
+
+    const summary = getHighCouncilVoteSummary(id);
+    if (summary.isMajoritySustained) {
+      console.log("SHC majority reached.");
+    }
+
+    renderCurrentPage();
+  }
+
+  async function setHighCouncilBypass(id, enabled) {
+    if (!hasAdminPasswordAccess()) {
+      alert("Admin password is required to use SHC bypass.");
+      return;
+    }
+
+    const item = appState.callings.find((calling) => calling.id === id);
+    if (!item) {
+      alert("Could not find this item to update SHC bypass.");
+      return;
+    }
+
+    const bypassEnabled = Boolean(enabled);
+    const updateData = {
+      hc_sustained_bypass: bypassEnabled,
+      hc_sustained_bypass_by: bypassEnabled ? getCurrentUserName() : null,
+      hc_sustained_bypass_at: bypassEnabled ? new Date().toISOString() : null,
+    };
+
+    const { error } = await supabase
+      .from("callings")
+      .update(updateData)
+      .eq("id", id);
+
+    if (error) {
+      console.error("Failed to update SHC bypass:", error);
+
+      if (error.code === "42703") {
+        appState.hcBypassAvailable = false;
+        alert(
+          "SHC bypass columns are not in the database yet. Please run the migration for hc_sustained_bypass fields.",
+        );
+        return;
+      }
+
+      alert(`Failed to update SHC bypass: ${error.message}`);
+      return;
+    }
+
+    Object.assign(item, updateData);
+    applyHighCouncilSummaryToCalling(item);
+    renderCurrentPage();
   }
 
   async function updateAssignment(id, field, value) {
@@ -189,6 +377,13 @@ export function createCallingsActions({
   }
 
   async function updateField(id, field, value) {
+    if (field === "hc_sustained") {
+      alert(
+        "SHC Sustained is now calculated from individual High Council votes.",
+      );
+      return;
+    }
+
     const updateData = {};
     const isSettingApartDoneField = [
       "set_apart",
@@ -240,6 +435,8 @@ export function createCallingsActions({
     toggleDetails,
     toggleSustainingUnits,
     updateSustainedUnits,
+    submitHighCouncilVote,
+    setHighCouncilBypass,
     updateAssignment,
     startInlineEdit,
     cancelInlineEdit,

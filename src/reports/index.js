@@ -7,7 +7,18 @@ function formatReportHeader(title, count) {
   return `${title}\n${"=".repeat(title.length)}\nItems: ${count}`;
 }
 
-function buildAwaitingShcReport(rows) {
+function formatNameList(names) {
+  return names.length ? names.join(", ") : "None";
+}
+
+function formatBypassLabel(row) {
+  return row?.hc_sustained_bypass === true ? " [PASS (Admin Bypass)]" : "";
+}
+
+function buildAwaitingShcReport(rows, reportContext = {}) {
+  const { getHighCouncilVoteSummary = null, hcVotingTableAvailable = true } =
+    reportContext;
+
   const awaiting = rows.filter(
     (row) =>
       isCompletedValue(row.sp_approved) &&
@@ -24,7 +35,21 @@ function buildAwaitingShcReport(rows) {
   const body = awaiting
     .map((row, index) => {
       const itemType = String(row.type || "CALL").toUpperCase();
-      return `${index + 1}. [${itemType}] ${row.name || "(No name)"} — ${row.position || "(No position)"} (${row.unit || "No unit"})`;
+
+      if (
+        !hcVotingTableAvailable ||
+        typeof getHighCouncilVoteSummary !== "function"
+      ) {
+        return `${index + 1}. [${itemType}] ${row.name || "(No name)"} — ${row.position || "(No position)"} (${row.unit || "No unit"})\n   - HC voting participation: unavailable (database voting table not configured)`;
+      }
+
+      const voteSummary = getHighCouncilVoteSummary(row.id);
+      const votedNames = [
+        ...(voteSummary?.sustainVoters || []),
+        ...(voteSummary?.concernVoters || []),
+      ];
+
+      return `${index + 1}. [${itemType}] ${row.name || "(No name)"} — ${row.position || "(No position)"} (${row.unit || "No unit"})\n   - Voted (${votedNames.length}/${voteSummary?.eligibleCount || 0}): ${formatNameList(votedNames)}\n   - Not voted (${voteSummary?.pendingCount || 0}): ${formatNameList(voteSummary?.pendingVoters || [])}`;
     })
     .join("\n");
 
@@ -167,7 +192,7 @@ function buildUnitSection(unitTitle, releases, toSustain) {
     lines.push("The following have been called to positions in the Stake:");
     toSustain.forEach((row, index) => {
       lines.push(
-        `  ${index + 1}. ${row.name || "(No name)"} — ${row.position || "(No position)"}`,
+        `  ${index + 1}. ${row.name || "(No name)"} — ${row.position || "(No position)"}${formatBypassLabel(row)}`,
       );
     });
     lines.push(
@@ -230,7 +255,7 @@ function buildSustainSetApartReleaseReport(rows) {
   return `${formatReportHeader("Sustain, Set Apart, and Release Report", totalItems)}\n\n${reportSections.join("\n\n")}`;
 }
 
-export function generateReport(type, rows) {
+export function generateReport(type, rows, reportContext = {}) {
   if (type === "sustain-setapart-release") {
     return buildSustainSetApartReleaseReport(rows);
   }
@@ -247,5 +272,5 @@ export function generateReport(type, rows) {
     return buildStatusSummaryReport(rows);
   }
 
-  return buildAwaitingShcReport(rows);
+  return buildAwaitingShcReport(rows, reportContext);
 }

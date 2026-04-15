@@ -90,6 +90,10 @@ if (!import.meta.env.DEV && typeof window !== "undefined") {
 const appState = {
   callings: [],
   members: [],
+  highCouncilNames: [],
+  hcVotesByCalling: {},
+  hcVotingTableAvailable: true,
+  hcBypassAvailable: true,
   assignableNames: [],
   statusOptions: [],
   themeMode: "system",
@@ -177,6 +181,176 @@ function getVisibleCallings() {
   return isStakePasswordSession() && !appState.showAllCallingsForStake
     ? appState.callings.filter((row) => isAssignedToCurrentUser(row))
     : appState.callings;
+}
+
+function getHighCouncilEligibleNames() {
+  return [...appState.highCouncilNames].sort((a, b) => a.localeCompare(b));
+}
+
+function getHighCouncilMajorityCount() {
+  const eligibleCount = getHighCouncilEligibleNames().length;
+  return eligibleCount > 0 ? Math.floor(eligibleCount / 2) + 1 : 0;
+}
+
+function getVoteValue(rawVote) {
+  const normalized = String(rawVote || "")
+    .toLowerCase()
+    .trim();
+
+  if (normalized === "sustain") {
+    return "sustain";
+  }
+
+  if (normalized === "concern") {
+    return "concern";
+  }
+
+  return "";
+}
+
+function getHighCouncilVoteSummary(callingId) {
+  const eligibleNames = getHighCouncilEligibleNames();
+  const eligibleByKey = new Map(
+    eligibleNames.map((name) => [normalizeComparableName(name), name]),
+  );
+
+  const votes = Array.isArray(appState.hcVotesByCalling[callingId])
+    ? appState.hcVotesByCalling[callingId]
+    : [];
+
+  const latestVoteByVoterKey = new Map();
+
+  votes.forEach((voteRow) => {
+    const voterName = String(voteRow?.voter_name || "").trim();
+    const voterKey = normalizeComparableName(voterName);
+    const vote = getVoteValue(voteRow?.vote);
+    if (!voterKey || !vote || !eligibleByKey.has(voterKey)) {
+      return;
+    }
+
+    const current = latestVoteByVoterKey.get(voterKey);
+    const currentTime = current?.voted_at
+      ? new Date(current.voted_at).getTime()
+      : Number.NEGATIVE_INFINITY;
+    const nextTime = voteRow?.voted_at
+      ? new Date(voteRow.voted_at).getTime()
+      : Number.NEGATIVE_INFINITY;
+
+    if (!current || nextTime >= currentTime) {
+      latestVoteByVoterKey.set(voterKey, {
+        voter_name: eligibleByKey.get(voterKey),
+        vote,
+        voted_at: voteRow?.voted_at || null,
+      });
+    }
+  });
+
+  const sustainVoters = [];
+  const concernVoters = [];
+
+  latestVoteByVoterKey.forEach((entry) => {
+    if (entry.vote === "sustain") {
+      sustainVoters.push(entry.voter_name);
+      return;
+    }
+
+    if (entry.vote === "concern") {
+      concernVoters.push(entry.voter_name);
+    }
+  });
+
+  sustainVoters.sort((a, b) => a.localeCompare(b));
+  concernVoters.sort((a, b) => a.localeCompare(b));
+
+  const votedKeys = new Set(latestVoteByVoterKey.keys());
+  const pendingVoters = eligibleNames.filter(
+    (name) => !votedKeys.has(normalizeComparableName(name)),
+  );
+
+  const majorityCount = getHighCouncilMajorityCount();
+  const sustainCount = sustainVoters.length;
+  const concernCount = concernVoters.length;
+
+  return {
+    eligibleCount: eligibleNames.length,
+    majorityCount,
+    sustainCount,
+    concernCount,
+    pendingCount: pendingVoters.length,
+    sustainVoters,
+    concernVoters,
+    pendingVoters,
+    currentUserVote:
+      latestVoteByVoterKey.get(normalizeComparableName(getCurrentUserName()))
+        ?.vote || "",
+    canVote:
+      isStakePasswordSession() &&
+      eligibleByKey.has(normalizeComparableName(getCurrentUserName())),
+    isMajoritySustained: majorityCount > 0 && sustainCount >= majorityCount,
+  };
+}
+
+function applyHighCouncilSummaryToCalling(calling) {
+  if (!calling) {
+    return;
+  }
+
+  const summary = getHighCouncilVoteSummary(calling.id);
+  const isBypassEnabled = calling.hc_sustained_bypass === true;
+  const wasSustained = isCompletedValue(calling.hc_sustained);
+
+  calling.hc_sustained = summary.isMajoritySustained || isBypassEnabled;
+
+  if ((summary.isMajoritySustained || isBypassEnabled) && !wasSustained) {
+    calling.hc_sustained_date = new Date().toISOString();
+  } else if (!summary.isMajoritySustained && !isBypassEnabled) {
+    calling.hc_sustained_date = null;
+  }
+}
+
+function applyHighCouncilSummaryToAllCallings() {
+  appState.callings.forEach((calling) =>
+    applyHighCouncilSummaryToCalling(calling),
+  );
+}
+
+async function fetchHighCouncilVotes() {
+  const { data, error } = await supabase
+    .from("calling_hc_votes")
+    .select("calling_id, voter_name, vote, voted_at");
+
+  if (error) {
+    appState.hcVotingTableAvailable = false;
+    appState.hcVotesByCalling = {};
+
+    if (error.code === "42P01") {
+      console.warn(
+        "High Council voting table not found yet. Run the SQL migration to enable per-member SHC voting.",
+      );
+      return;
+    }
+
+    console.error("Failed to fetch High Council votes:", error);
+    return;
+  }
+
+  appState.hcVotingTableAvailable = true;
+
+  const grouped = {};
+  (data || []).forEach((row) => {
+    const callingId = row?.calling_id;
+    if (!callingId) {
+      return;
+    }
+
+    if (!grouped[callingId]) {
+      grouped[callingId] = [];
+    }
+
+    grouped[callingId].push(row);
+  });
+
+  appState.hcVotesByCalling = grouped;
 }
 
 function getSortedVisibleCallings() {
@@ -358,6 +532,18 @@ async function startApp() {
 
   if (members) {
     appState.members = members;
+    appState.highCouncilNames = [
+      ...new Set(
+        members
+          .filter(
+            (member) =>
+              getRequiredPasswordType(member?.shared_password_type) === "stake",
+          )
+          .map((member) => String(member.name ?? "").trim())
+          .filter(Boolean),
+      ),
+    ];
+
     appState.assignableNames = [
       ...new Set(
         members
@@ -385,17 +571,26 @@ async function startApp() {
 }
 
 async function fetchCallings() {
-  const { data, error } = await supabase
-    .from("callings")
-    .select("*")
-    .order("created_at", { ascending: false });
-  if (!error) appState.callings = data;
+  const [{ data, error }] = await Promise.all([
+    supabase
+      .from("callings")
+      .select("*")
+      .order("created_at", { ascending: false }),
+    fetchHighCouncilVotes(),
+  ]);
+
+  if (!error) {
+    appState.callings = data || [];
+    applyHighCouncilSummaryToAllCallings();
+  }
 }
 
 const cardsRenderer = createCardsRenderer({
   appState,
   getSortedVisibleCallings,
   hasAdminPasswordAccess,
+  isStakePasswordSession,
+  getHighCouncilVoteSummary,
   resolveSustainingByField,
   resolveSettingApartByField,
   resolveSettingApartDoneField,
@@ -451,6 +646,11 @@ const callingsActions = createCallingsActions({
   appState,
   supabase,
   hasAdminPasswordAccess,
+  isStakePasswordSession,
+  getCurrentUserName,
+  normalizeComparableName,
+  getHighCouncilVoteSummary,
+  applyHighCouncilSummaryToCalling,
   getAssignmentFieldCandidates,
   renderCards,
   renderCurrentPage,
@@ -464,6 +664,12 @@ window.toggleSustainingUnits = (id) =>
 
 window.updateSustainedUnits = async (id, unitName) =>
   callingsActions.updateSustainedUnits(id, unitName);
+
+window.submitHighCouncilVote = async (id, vote) =>
+  callingsActions.submitHighCouncilVote(id, vote);
+
+window.setHighCouncilBypass = async (id, enabled) =>
+  callingsActions.setHighCouncilBypass(id, enabled);
 
 window.updateAssignment = async (id, field, value) =>
   callingsActions.updateAssignment(id, field, value);
@@ -516,6 +722,10 @@ window.generateCurrentReport = () => {
   appState.reportOutput = generateReport(
     appState.currentReportType,
     getVisibleCallings(),
+    {
+      getHighCouncilVoteSummary,
+      hcVotingTableAvailable: appState.hcVotingTableAvailable,
+    },
   );
   renderReportsPage();
 };

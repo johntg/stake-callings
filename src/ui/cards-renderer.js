@@ -2,6 +2,8 @@ export function createCardsRenderer({
   appState,
   getSortedVisibleCallings,
   hasAdminPasswordAccess,
+  isStakePasswordSession,
+  getHighCouncilVoteSummary,
   resolveSustainingByField,
   resolveSettingApartByField,
   resolveSettingApartDoneField,
@@ -100,6 +102,15 @@ export function createCardsRenderer({
         const settingApartBy = row[settingApartByField] || "";
         const settingApartDone = isCompletedValue(row[settingApartDoneField]);
         const lcrRecorded = isCompletedValue(row[lcrRecordedField]);
+        const voteSummary = getHighCouncilVoteSummary(row.id);
+        const isHcMajoritySustained =
+          appState.hcVotingTableAvailable && voteSummary.isMajoritySustained;
+        const isHcBypassed = row.hc_sustained_bypass === true;
+        const currentUserVote = voteSummary.currentUserVote;
+        const showVotingControls =
+          appState.hcVotingTableAvailable &&
+          isStakePasswordSession() &&
+          voteSummary.canVote;
         const currentStatus = (row.status || "In Progress").trim();
         const statusOptions = [...appState.statusOptions];
         if (currentStatus && !statusOptions.includes(currentStatus)) {
@@ -131,13 +142,86 @@ export function createCardsRenderer({
                 </div>
                 ${row.sp_approved_date ? `<span style="font-size: 0.75rem; color: var(--workflow-date); margin-left: 26px;">${new Date(row.sp_approved_date).toLocaleDateString()}</span>` : ""}
               </label>
-              <label class="workflow-block ${row.hc_sustained ? "done" : ""}" style="display: flex; flex-direction: column; gap: 6px; padding: 10px; background: ${row.hc_sustained ? "var(--block-done)" : "var(--block-pending)"}; color: var(--workflow-text); border-radius: 12px; cursor: pointer;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                  <input type="checkbox" ${row.hc_sustained ? "checked" : ""} onchange="window.updateField('${row.id}', 'hc_sustained', this.checked)">
-                  <span style="font-weight: bold;">SHC Sustained</span>
-                </div>
-                ${row.hc_sustained_date ? `<span style="font-size: 0.75rem; color: var(--workflow-date); margin-left: 26px;">${new Date(row.hc_sustained_date).toLocaleDateString()}</span>` : ""}
-              </label>
+              <div class="workflow-block ${row.hc_sustained ? "done" : ""}" style="display: flex; flex-direction: column; gap: 8px; padding: 10px; background: ${row.hc_sustained ? "var(--block-done)" : "var(--block-pending)"}; color: var(--workflow-text); border-radius: 12px;">
+                <span style="font-weight: bold;">SHC Sustaining</span>
+
+                ${
+                  appState.hcVotingTableAvailable
+                    ? `
+                  <span style="font-size: 0.78rem; color: var(--workflow-date);">Sustain: ${voteSummary.sustainCount} | Concern: ${voteSummary.concernCount} | Pending: ${voteSummary.pendingCount}</span>
+                  <span style="font-size: 0.78rem; color: var(--workflow-date);">Majority required: ${voteSummary.majorityCount || "-"} of ${voteSummary.eligibleCount}</span>
+                  ${
+                    isHcBypassed
+                      ? `<span style="font-size: 0.76rem; color: var(--danger-text); font-weight: 700;">Admin bypass enabled${row.hc_sustained_bypass_by ? ` by ${escapeHtml(row.hc_sustained_bypass_by)}` : ""}</span>`
+                      : ""
+                  }
+                  ${
+                    row.hc_sustained_date
+                      ? `<span style="font-size: 0.75rem; color: var(--workflow-date);">Majority reached: ${new Date(row.hc_sustained_date).toLocaleDateString()}</span>`
+                      : ""
+                  }
+                `
+                    : `
+                  <span style="font-size: 0.78rem; color: #8b1e1e; font-weight: 600;">
+                    Voting table missing in database. Run migration to enable per-member SHC votes.
+                  </span>
+                `
+                }
+
+                ${
+                  showVotingControls
+                    ? `
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px;">
+                    <button
+                      type="button"
+                      onclick="window.submitHighCouncilVote('${row.id}', 'sustain')"
+                      style="padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: ${currentUserVote === "sustain" ? "var(--chip-selected-bg)" : "var(--white)"}; color: ${currentUserVote === "sustain" ? "var(--chip-selected-text)" : "var(--text)"}; font-weight: 700; cursor: pointer;"
+                    >Sustain</button>
+                    <button
+                      type="button"
+                      onclick="window.submitHighCouncilVote('${row.id}', 'concern')"
+                      style="padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: ${currentUserVote === "concern" ? "var(--danger-soft)" : "var(--white)"}; color: ${currentUserVote === "concern" ? "var(--danger-text)" : "var(--text)"}; font-weight: 700; cursor: pointer;"
+                    >Raise concern</button>
+                  </div>
+                  <button
+                    type="button"
+                    onclick="window.submitHighCouncilVote('${row.id}', 'clear')"
+                    style="margin-top: 2px; padding: 5px 8px; border-radius: 8px; border: 1px dashed var(--border); background: transparent; color: var(--text-muted); font-weight: 600; cursor: pointer;"
+                  >Clear my vote</button>
+                `
+                    : ""
+                }
+
+                ${
+                  hasAdminPasswordAccess() && appState.hcVotingTableAvailable
+                    ? `
+                  <div style="margin-top: 4px; font-size: 0.75rem; color: var(--workflow-date); display: grid; gap: 3px;">
+                    <span><strong>Sustained by:</strong> ${voteSummary.sustainVoters.length ? escapeHtml(voteSummary.sustainVoters.join(", ")) : "None"}</span>
+                    <span><strong>Unable to sustain:</strong> ${voteSummary.concernVoters.length ? escapeHtml(voteSummary.concernVoters.join(", ")) : "None"}</span>
+                  </div>
+                `
+                    : ""
+                }
+
+                ${
+                  hasAdminPasswordAccess()
+                    ? `
+                  <div style="margin-top: 6px; display: grid; gap: 6px;">
+                    <button
+                      type="button"
+                      onclick="window.setHighCouncilBypass('${row.id}', ${isHcBypassed ? "false" : "true"})"
+                      style="padding: 7px 8px; border-radius: 8px; border: 1px solid var(--border); background: ${isHcBypassed ? "var(--danger-soft)" : "var(--surface-subtle)"}; color: ${isHcBypassed ? "var(--danger-text)" : "var(--text)"}; font-weight: 700; cursor: pointer;"
+                    >${isHcBypassed ? "Disable training bypass" : "Enable training bypass (mark pass)"}</button>
+                    ${
+                      !appState.hcBypassAvailable
+                        ? `<span style="font-size: 0.72rem; color: #8b1e1e; font-weight: 600;">Bypass DB columns not found. Run migration to enable this control.</span>`
+                        : ""
+                    }
+                  </div>
+                `
+                    : ""
+                }
+              </div>
             </div>
 
               <button onclick="window.toggleDetails('${row.id}')" 
