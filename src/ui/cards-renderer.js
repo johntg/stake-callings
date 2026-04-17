@@ -150,7 +150,14 @@ export function createCardsRenderer({
               </label>
               <div class="workflow-block ${row.hc_sustained ? "done" : ""}" style="display: flex; flex-direction: column; gap: 8px; padding: 10px; background: ${row.hc_sustained ? "var(--block-done)" : "var(--block-pending)"}; color: var(--workflow-text); border-radius: 12px;">
                 <span style="font-weight: bold;">SHC Sustaining</span>
-
+                ${
+                  isRelease
+                    ? `
+                  <div style="padding: 6px; border-radius: 6px; background: var(--surface-muted); text-align: center; font-weight: 700; color: var(--text-muted);">
+                    N/A
+                  </div>
+`
+                    : `
                 ${
                   appState.hcVotingTableAvailable
                     ? `
@@ -235,6 +242,7 @@ export function createCardsRenderer({
                           ? `<span style="font-size: 0.72rem; color: #8b1e1e; font-weight: 600;">Bypass DB columns not found. Run migration to enable this control.</span>`
                           : ""
                       }
+                      
                     </div>
                   `
                       : ""
@@ -242,7 +250,10 @@ export function createCardsRenderer({
                 `
                     : ""
                 }
+                
               </div>
+              `
+                }
             </div>
 
               <button onclick="window.toggleDetails('${row.id}')" 
